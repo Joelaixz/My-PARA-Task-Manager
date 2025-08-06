@@ -18,5 +18,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     const [channel, ...omit] = args
     return ipcRenderer.invoke(channel, ...omit)
   },
-  getFiles: (): Promise<string[]> => ipcRenderer.invoke('get-files'),
+  getFiles: (): Promise<any> => ipcRenderer.invoke('get-files'),
+  
+  readFile: (filePath: string): Promise<string | null> => ipcRenderer.invoke('read-file', filePath),
 })

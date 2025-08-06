@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue'
+import { useFileStore } from '../store' // --- 1. 匯入我們建立的 FileStore ---
 
 // --- 型別定義 ---
 interface FileEntry {
@@ -16,10 +17,13 @@ const props = defineProps<{
 }>()
 
 // --- Emits ---
+// 目的：我們不再需要向上發送 selectFile 事件，所以將其從定義中移除。
 const emit = defineEmits<{
   (e: 'toggleFolder', entry: FileEntry): void
-  (e: 'selectFile', entry: FileEntry): void
 }>()
+
+// --- 2. 實例化 Store ---
+const fileStore = useFileStore()
 
 // --- 新增：根據檔名回傳對應圖示的函數 ---
 // 目的：讓檔案列表能根據檔案類型顯示不同的圖示，增加可讀性。
@@ -44,11 +48,13 @@ function getIconForFile(fileName: string): string {
 }
 
 // --- 事件處理 ---
+// 目的：點擊目錄時，依然發送事件讓父層處理展開/收合；點擊檔案時，則直接更新全域狀態。
 function handleEntryClick(entry: FileEntry) {
   if (entry.isDirectory) {
     emit('toggleFolder', entry)
   } else {
-    emit('selectFile', entry)
+    // --- 3. 呼叫 Store 的 action 來更新狀態 ---
+    fileStore.selectFile(entry.path)
   }
 }
 </script>
@@ -58,7 +64,10 @@ function handleEntryClick(entry: FileEntry) {
     <div v-for="entry in props.entries" :key="entry.path" class="file-tree-node">
       <div 
         class="file-item" 
-        :class="{ 'is-directory': entry.isDirectory }" 
+        :class="{ 
+          'is-directory': entry.isDirectory,
+          'is-selected': !entry.isDirectory && fileStore.selectedFilePath === entry.path
+        }" 
         @click="handleEntryClick(entry)"
       >
         <span v-if="entry.isDirectory" class="arrow-icon" :class="{ 'is-expanded': entry.isExpanded }">▶</span>
@@ -75,7 +84,6 @@ function handleEntryClick(entry: FileEntry) {
           <FileTree 
             :entries="entry.children" 
             @toggle-folder="(childEntry) => emit('toggleFolder', childEntry)"
-            @select-file="(childEntry) => emit('selectFile', childEntry)"
           />
         </div>
       </div>
@@ -111,6 +119,12 @@ function handleEntryClick(entry: FileEntry) {
   background-color: #ecf5ff;
 }
 
+/* --- 新增：被選中檔案的樣式 --- */
+.file-item.is-selected {
+  background-color: #d9ecff;
+  font-weight: 500;
+}
+
 .is-directory {
   font-weight: 500;
 }
@@ -144,4 +158,8 @@ function handleEntryClick(entry: FileEntry) {
   text-overflow: ellipsis;
 }
 
+/* --- 修改：子節點的樣式，增加縮排 --- */
+.children-wrapper {
+  padding-left: 22px; /* 箭頭+圖示的寬度，讓子項目對齊 */
+}
 </style>

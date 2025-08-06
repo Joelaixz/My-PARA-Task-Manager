@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
-import { RouterLink, RouterView } from 'vue-router'
-import FileTree from './FileTree.vue' // <--- 1. 匯入新的 FileTree 元件
+import { ref, computed, onUnmounted, watch } from 'vue' // --- 1. 匯入 watch ---
+import { RouterLink, RouterView, useRouter } from 'vue-router' // --- 2. 匯入 useRouter ---
+import FileTree from './FileTree.vue'
+import { useFileStore } from '../store' // --- 3. 匯入 FileStore ---
+
+// --- 4. 實例化 router 和 store ---
+const router = useRouter()
+const fileStore = useFileStore()
 
 // --- 型別定義 ---
-// 目的：讓此元件知道 FileEntry 的結構，以便傳遞和操作。
 interface FileEntry {
   name: string;
   path: string;
@@ -87,17 +91,19 @@ async function handleLoadFiles() {
 }
 
 // --- 事件處理 ---
-// 目的：這些函數現在用來回應來自 FileTree 子元件的事件。
 function handleToggleFolder(folder: FileEntry) {
   if (folder.isDirectory) {
     folder.isExpanded = !folder.isExpanded;
   }
 }
 
-function handleSelectFile(file: FileEntry) {
-  console.log('File selected in MainLayout:', file.path);
-  // 未來可以在這裡實現開啟檔案到主編輯區的邏輯
-}
+// --- 5. 新增監聽器，將狀態變化與路由導航連結起來 ---
+watch(() => fileStore.selectedFilePath, (newPath, oldPath) => {
+  // 只有當 newPath 有值 (代表一個檔案被選中)，且目前不在 /view 頁面時，才進行跳轉
+  if (newPath && router.currentRoute.value.path !== '/view') {
+    router.push('/view')
+  }
+})
 
 onUnmounted(() => {
   window.removeEventListener('mousemove', handleResizing)
@@ -138,7 +144,6 @@ onUnmounted(() => {
             v-else 
             :entries="fileList" 
             @toggle-folder="handleToggleFolder"
-            @select-file="handleSelectFile"
           />
         </div>
       </div>

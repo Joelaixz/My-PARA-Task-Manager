@@ -25,5 +25,8 @@ interface Window {
     
     // 目的：將回傳型別與 main.ts 中的實際回傳值保持一致。
     getFiles(): Promise<{ folderName: string; files: FileEntry[] } | null>
+    
+    // --- 定義讀取檔案內容的函式型別 ---
+    readFile(filePath: string): Promise<string | null>
   }
 }

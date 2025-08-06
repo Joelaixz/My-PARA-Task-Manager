@@ -1,11 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import PersonalView from '../views/PersonalView.vue'
+// --- 1. 匯入我們新建立的 FileView 元件 ---
+import FileView from '../views/FileView.vue'
 
 const routes = [
   {
     path: '/',
     name: 'Personal',
     component: PersonalView,
+  },
+  {
+    path: '/view',
+    name: 'FileView',
+    component: FileView,
   },
   {
     path: '/projects',

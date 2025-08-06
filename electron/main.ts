@@ -45,7 +45,7 @@ async function readDirectoryRecursively(dirPath: string): Promise<FileEntry[]> {
         children: await readDirectoryRecursively(fullPath)
       });
     } else {
-      // --- 修改：檢查檔案副檔名是否在我們的允許列表中 ---
+      // --- 檢查檔案副檔名是否在我們的允許列表中 ---
       const fileExtension = path.extname(entry.name).toLowerCase();
       if (ALLOWED_EXTENSIONS.includes(fileExtension)) {
         files.push({
@@ -89,6 +89,20 @@ async function handleFileOpen() {
   }
 }
 
+// --- 處理讀取檔案內容的函數 ---
+// 目的：提供一個由主行程執行的安全檔案讀取功能。
+async function handleReadFile(event: Electron.IpcMainInvokeEvent, filePath: string): Promise<string | null> {
+  try {
+    // 使用 'utf-8' 編碼讀取文字檔案
+    const content = await fs.readFile(filePath, 'utf-8');
+    return content;
+  } catch (error) {
+    console.error(`Error reading file: ${filePath}`, error);
+    return null; // 發生錯誤時回傳 null
+  }
+}
+
+
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
@@ -125,5 +139,7 @@ app.on('activate', () => {
 
 app.whenReady().then(() => {
   ipcMain.handle('get-files', handleFileOpen)
+  // --- 註冊用於讀取檔案內容的 IPC Handler ---
+  ipcMain.handle('read-file', handleReadFile)
   createWindow()
 })
