@@ -2,26 +2,18 @@
 
 declare namespace NodeJS {
   interface ProcessEnv {
-    /**
-     * The built directory structure
-     *
-     * ```tree
-     * ├─┬─┬ dist
-     * │ │ └── index.html
-     * │ │
-     * │ ├─┬ dist-electron
-     * │ │ ├── main.js
-     * │ │ └── preload.js
-     * │
-     * ```
-     */
     APP_ROOT: string
-    /** /dist/ or /public/ */
     VITE_PUBLIC: string
   }
 }
 
-// Used in Renderer process, expose in `preload.ts`
+// 用於渲染行程，在 `preload.ts` 中暴露
 interface Window {
-  ipcRenderer: import('electron').IpcRenderer
+  ipcRenderer: {
+    on(...args: Parameters<import('electron').IpcRenderer['on']>): import('electron').IpcRenderer
+    off(...args: Parameters<import('electron').IpcRenderer['off']>): import('electron').IpcRenderer
+    send(...args: Parameters<import('electron').IpcRenderer['send']>): void
+    invoke(...args: Parameters<import('electron').IpcRenderer['invoke']>): Promise<any>
+    getFiles(): Promise<string[]>
+  }
 }
