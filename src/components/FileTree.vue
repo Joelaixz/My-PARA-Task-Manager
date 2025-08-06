@@ -34,7 +34,9 @@ function getIconForFile(fileName: string): string {
     case 'md':
       return '📝'; // Markdown
     case 'txt':
-      return '📄'; // Text
+      return '📃'; // Text
+    case 'pdf':
+      return '📕'; // PDF
     case 'png':
     case 'jpg':
     case 'jpeg':
@@ -97,15 +99,11 @@ function handleEntryClick(entry: FileEntry) {
   min-width: 100%;
 }
 
-.file-tree-node {
-  /* 每個節點的容器 */
-}
-
 .file-item {
   display: flex;
   align-items: center;
-  padding: 6px 0px;
-  font-size: 12px;
+  padding: 6px 8px; /* 增加左右 padding */
+  font-size: 13px; /* 稍微放大字體 */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -113,19 +111,22 @@ function handleEntryClick(entry: FileEntry) {
   border-radius: 4px;
   transition: background-color 0.2s;
   user-select: none;
+  color: var(--text-secondary);
 }
 
 .file-item:hover {
-  background-color: #ecf5ff;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
-/* --- 新增：被選中檔案的樣式 --- */
 .file-item.is-selected {
-  background-color: #d9ecff;
+  background-color: var(--accent-color-muted);
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .is-directory {
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -148,7 +149,7 @@ function handleEntryClick(entry: FileEntry) {
 }
 
 .type-icon {
-  width: 1.2em; /* 讓圖示寬度一致，避免文字對齊跳動 */
+  width: 1.2em;
   text-align: center;
   margin-right: 8px;
 }
@@ -158,8 +159,7 @@ function handleEntryClick(entry: FileEntry) {
   text-overflow: ellipsis;
 }
 
-/* --- 修改：子節點的樣式，增加縮排 --- */
 .children-wrapper {
-  padding-left: 22px; /* 箭頭+圖示的寬度，讓子項目對齊 */
+  padding-left: 0px;
 }
 </style>

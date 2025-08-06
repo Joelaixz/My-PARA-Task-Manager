@@ -4,9 +4,3 @@
     <p>這裡是個人儀表板或今日焦點。</p>
   </div>
 </template>
-
-<style scoped>
-.page-container {
-  padding: 2rem;
-}
-</style>

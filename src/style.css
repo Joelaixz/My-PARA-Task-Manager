@@ -1,11 +1,39 @@
+/* 目的：定義全域 CSS 變數，用於集中管理暗黑模式的配色方案 */
+:root {
+  --font-family: Avenir, Helvetica, Arial, sans-serif;
+  
+  /* --- 背景色 --- */
+  --bg-primary: #1e1e1e;       /* 主要背景 (最暗) */
+  --bg-secondary: #252526;     /* 次要背景 (如側邊欄、程式碼區塊) */
+  --bg-tertiary: #333333;      /* 懸停/互動元素背景 */
+  --bg-l1-sidebar: #2d2d2d;    /* L1 側邊欄專用色 */
+
+  /* --- 文字顏色 --- */
+  --text-primary: #d4d4d4;     /* 主要文字 */
+  --text-secondary: #a0a0a0;   /* 次要/輔助文字 */
+  --text-accent-contrast: #ffffff; /* 強調色上的文字 (白色) */
+
+  /* --- 邊框與分隔線 --- */
+  --border-color: #3c3c3c;
+  
+  /* --- 強調色 --- */
+  --accent-color: #42b983;            /* 主要品牌/強調色 (綠色) */
+  --accent-color-hover: #52c993;
+  --accent-color-muted: rgba(66, 185, 131, 0.3); /* 選中項目的淡色背景 */
+  --link-color: #559fff;             /* 超連結顏色 */
+}
+
 /* 全域樣式重置 */
 body, #app {
   margin: 0;
   padding: 0;
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--font-family);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
+  
+  /* 使用 CSS 變數設定全域基礎樣式 */
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 /* 為了讓根元素佔滿整個視窗 */
@@ -13,4 +41,9 @@ html, body, #app {
   height: 100%;
   width: 100%;
   overflow: hidden;
+}
+
+/* 將 .page-container 提升為全域通用樣式 */
+.page-container {
+  padding: 2rem;
 }

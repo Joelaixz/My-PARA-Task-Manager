@@ -4,9 +4,3 @@
     <p>這裡是領域。</p>
   </div>
 </template>
-
-<style scoped>
-.page-container {
-  padding: 2rem;
-}
-</style>

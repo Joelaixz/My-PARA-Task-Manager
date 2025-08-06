@@ -25,7 +25,7 @@ interface FileEntry {
 }
 
 // --- 目的：定義允許顯示的檔案類型 ---
-const ALLOWED_EXTENSIONS = ['.md', '.txt', '.svg', '.png', '.jpg', '.jpeg', '.gif'];
+const ALLOWED_EXTENSIONS = ['.md', '.txt', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.pdf'];
 
 async function readDirectoryRecursively(dirPath: string): Promise<FileEntry[]> {
   const entries = await fs.readdir(dirPath, { withFileTypes: true });

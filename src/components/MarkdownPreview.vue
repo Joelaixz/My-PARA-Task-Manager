@@ -27,28 +27,24 @@ const renderedHtml = computed(() => {
 </template>
 
 <style scoped>
-/* 目的：為渲染後的 Markdown 內容提供基本但清晰的樣式。
-  這些樣式只會套用在這個元件內部，不會影響到應用程式的其他部分。
-*/
 .markdown-body {
-  padding: 1rem 2rem;
+  padding: 1rem 2.5rem; /* 增加左右 padding */
   line-height: 1.7;
-  color: #333;
+  color: var(--text-primary);
   word-wrap: break-word;
 }
 
-/* 讓 v-html 內的元素也能吃到樣式 */
 .markdown-body :deep(h1),
 .markdown-body :deep(h2),
 .markdown-body :deep(h3),
 .markdown-body :deep(h4),
 .markdown-body :deep(h5),
 .markdown-body :deep(h6) {
-  margin-top: 1.5rem;
+  margin-top: 2rem;
   margin-bottom: 1rem;
   font-weight: 600;
   line-height: 1.25;
-  border-bottom: 1px solid #eaecef;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.3em;
 }
 
@@ -67,7 +63,7 @@ const renderedHtml = computed(() => {
 }
 
 .markdown-body :deep(a) {
-  color: #0366d6;
+  color: var(--link-color);
   text-decoration: none;
 }
 
@@ -78,16 +74,16 @@ const renderedHtml = computed(() => {
 .markdown-body :deep(blockquote) {
   margin: 0 0 1rem 0;
   padding: 0 1em;
-  color: #6a737d;
-  border-left: 0.25em solid #dfe2e5;
+  color: var(--text-secondary);
+  border-left: 0.25em solid var(--border-color);
 }
 
 .markdown-body :deep(code) {
   padding: 0.2em 0.4em;
   margin: 0;
   font-size: 85%;
-  background-color: rgba(27,31,35,0.05);
-  border-radius: 3px;
+  background-color: var(--bg-secondary);
+  border-radius: 4px;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
 }
 
@@ -97,8 +93,8 @@ const renderedHtml = computed(() => {
   overflow: auto;
   font-size: 85%;
   line-height: 1.45;
-  background-color: #f6f8fa;
-  border-radius: 3px;
+  background-color: var(--bg-secondary);
+  border-radius: 6px;
 }
 
 .markdown-body :deep(pre code) {
@@ -111,5 +107,22 @@ const renderedHtml = computed(() => {
 .markdown-body :deep(img) {
   max-width: 100%;
   height: auto;
+  border-radius: 4px;
+}
+
+.markdown-body :deep(table) {
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  border: 1px solid var(--border-color);
+  padding: 0.5rem;
+}
+
+.markdown-body :deep(th) {
+  background-color: var(--bg-secondary);
 }
 </style>
