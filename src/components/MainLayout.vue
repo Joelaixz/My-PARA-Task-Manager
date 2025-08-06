@@ -1,76 +1,104 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
+import FileTree from './FileTree.vue' // <--- 1. 匯入新的 FileTree 元件
 
-// --- 檔案列表狀態 ---
-const fileList = ref<string[]>([])
+// --- 型別定義 ---
+// 目的：讓此元件知道 FileEntry 的結構，以便傳遞和操作。
+interface FileEntry {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  children?: FileEntry[];
+  isExpanded?: boolean;
+}
+
+// --- 檔案總管相關狀態 ---
+const fileList = ref<FileEntry[]>([])
+const selectedFolderName = ref('檔案總管')
 const isLoading = ref(false)
 
 // --- 側邊欄狀態管理 ---
 const isCollapsed = ref(false)
-const sidebarWidth = ref(240) // 側邊欄初始寬度
+const sidebarWidth = ref(240)
 const isResizing = ref(false)
 
 // --- DOM 事件處理 ---
 function startResize(event: MouseEvent) {
   event.preventDefault()
   isResizing.value = true
+  document.body.style.cursor = 'col-resize'
   window.addEventListener('mousemove', handleResizing)
   window.addEventListener('mouseup', stopResize)
 }
 
 function handleResizing(event: MouseEvent) {
   if (!isResizing.value) return
-  // 60px 是 L1 側邊欄的寬度
-  let newWidth = event.clientX - 60
-  // 設定寬度上下限
-  if (newWidth < 180) newWidth = 180
-  if (newWidth > 500) newWidth = 500
-  sidebarWidth.value = newWidth
+  const newWidth = event.clientX - 60
+  if (newWidth >= 180 && newWidth <= 500) {
+    sidebarWidth.value = newWidth
+  }
 }
 
 function stopResize() {
   isResizing.value = false
+  document.body.style.cursor = ''
   window.removeEventListener('mousemove', handleResizing)
   window.removeEventListener('mouseup', stopResize)
 }
 
-// 切換側邊欄的收合狀態
 function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value
 }
 
-// 使用計算屬性來動態決定側邊欄的樣式
-const sidebarStyle = computed(() => {
-  if (isCollapsed.value) {
-    return {
-      width: '0px',
-      padding: '0',
-      borderRight: 'none', // 收合時隱藏邊框
-      overflow: 'hidden'
-    }
-  }
-  return {
-    width: `${sidebarWidth.value}px`
-  }
-})
-
+const sidebarStyle = computed(() => ({
+  width: isCollapsed.value ? '0px' : `${sidebarWidth.value}px`,
+  padding: isCollapsed.value ? '0' : undefined,
+  borderRight: isCollapsed.value ? 'none' : undefined,
+  overflow: 'hidden'
+}))
 
 // --- IPC 通訊 ---
 async function handleLoadFiles() {
   isLoading.value = true
+  fileList.value = []
   try {
-    const files = await window.ipcRenderer.getFiles()
-    fileList.value = files
+    const result = await window.ipcRenderer.getFiles()
+    if (result) {
+      const addExpansionState = (entries: FileEntry[]): FileEntry[] => {
+        return entries.map(entry => {
+          if (entry.isDirectory) {
+            return { ...entry, isExpanded: true, children: entry.children ? addExpansionState(entry.children) : [] };
+          }
+          return entry;
+        });
+      };
+      fileList.value = addExpansionState(result.files);
+      selectedFolderName.value = result.folderName;
+    } else {
+      selectedFolderName.value = '檔案總管';
+    }
   } catch (error) {
     console.error('Failed to get files from main process:', error)
-    fileList.value = []
+    selectedFolderName.value = '檔案總管'
   } finally {
     isLoading.value = false
   }
 }
 
-// 元件銷毀時，確保移除事件監聽，避免記憶體洩漏
+// --- 事件處理 ---
+// 目的：這些函數現在用來回應來自 FileTree 子元件的事件。
+function handleToggleFolder(folder: FileEntry) {
+  if (folder.isDirectory) {
+    folder.isExpanded = !folder.isExpanded;
+  }
+}
+
+function handleSelectFile(file: FileEntry) {
+  console.log('File selected in MainLayout:', file.path);
+  // 未來可以在這裡實現開啟檔案到主編輯區的邏輯
+}
+
 onUnmounted(() => {
   window.removeEventListener('mousemove', handleResizing)
   window.removeEventListener('mouseup', stopResize)
@@ -94,19 +122,24 @@ onUnmounted(() => {
     <aside class="l2-sidebar" :style="sidebarStyle">
       <div v-if="!isCollapsed" class="sidebar-content">
         <div class="l2-header">
-          <span>檔案總管</span>
-          <div>
+          <span class="header-title" :title="selectedFolderName">{{ selectedFolderName }}</span>
+          <div class="header-actions">
             <button @click="handleLoadFiles" :disabled="isLoading" title="選擇資料夾">📂</button>
             <button @click="toggleCollapse" title="收合側欄"> &lt; </button>
           </div>
         </div>
-        <div class="file-list">
-          <div v-if="fileList.length === 0" class="empty-list">
-            點擊資料夾圖示選擇
+        
+        <div class="file-list-container">
+          <div v-if="isLoading" class="feedback-message">讀取中...</div>
+          <div v-else-if="fileList.length === 0" class="feedback-message">
+            點擊 📂 圖示選擇資料夾
           </div>
-          <div v-else v-for="file in fileList" :key="file" class="file-item">
-            {{ file }}
-          </div>
+          <FileTree 
+            v-else 
+            :entries="fileList" 
+            @toggle-folder="handleToggleFolder"
+            @select-file="handleSelectFile"
+          />
         </div>
       </div>
     </aside>
@@ -120,160 +153,30 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.main-layout {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  background-color: #f0f2f5;
-  overflow: hidden;
-}
+.main-layout { display: flex; height: 100vh; width: 100vw; background-color: #f0f2f5; overflow: hidden; }
+.main-layout.is-resizing { user-select: none; }
+.l1-sidebar { width: 60px; background-color: #2c3e50; display: flex; flex-direction: column; align-items: center; padding-top: 1rem; flex-shrink: 0; z-index: 10; }
+.l1-sidebar a { color: #bdc3c7; text-decoration: none; font-size: 1.5rem; font-weight: bold; margin-bottom: 1.5rem; padding: 0.5rem; border-radius: 8px; transition: background-color 0.3s, color 0.3s; }
+.l1-sidebar a:hover { background-color: #34495e; color: #ecf0f1; }
+.l1-sidebar a.router-link-exact-active { background-color: #42b983; color: white; }
+.expand-button { position: absolute; left: 60px; top: 10px; z-index: 20; background: #34495e; color: white; border: none; border-top-right-radius: 4px; border-bottom-right-radius: 4px; cursor: pointer; padding: 8px 4px; font-family: monospace; }
+.expand-button:hover { background: #42b983; }
 
-.main-layout.is-resizing {
-  cursor: col-resize;
-}
+.l2-sidebar { background-color: #ffffff; border-right: 1px solid #dcdfe6; display: flex; flex-direction: column; flex-shrink: 0; position: relative; transition: width 0.2s ease; }
+.sidebar-content { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
 
-/* L1: 最左側圖示導航欄 */
-.l1-sidebar {
-  width: 60px;
-  background-color: #2c3e50;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-top: 1rem;
-  flex-shrink: 0;
-  z-index: 10;
-}
+.l2-header { padding: 0 1rem; height: 50px; border-bottom: 1px solid #dcdfe6; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; gap: 1rem; }
+.header-title { flex-grow: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header-actions { display: flex; align-items: center; flex-shrink: 0; }
+.header-actions button { font-size: 16px; background: transparent; color: #606266; border: none; border-radius: 4px; cursor: pointer; padding: 4px; margin-left: 8px; }
+.header-actions button:hover { background-color: #f2f6fc; }
+.header-actions button:disabled { color: #c0c4cc; cursor: not-allowed; }
 
-.l1-sidebar a {
-  color: #bdc3c7;
-  text-decoration: none;
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-bottom: 1.5rem;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: background-color 0.3s, color 0.3s;
-}
+.file-list-container { padding: 0.5rem; overflow-y: auto; flex-grow: 1; }
+.feedback-message { padding: 1rem; color: #909399; font-size: 14px; text-align: center; }
 
-.l1-sidebar a:hover {
-  background-color: #34495e;
-  color: #ecf0f1;
-}
+.resizer { width: 5px; cursor: col-resize; background-color: transparent; flex-shrink: 0; position: relative; z-index: 5; transition: background-color 0.2s; }
+.resizer:hover, .main-layout.is-resizing .resizer { background-color: #c0c4cc; }
 
-.l1-sidebar a.router-link-exact-active {
-  background-color: #42b983;
-  color: white;
-}
-
-/* 展開按鈕 */
-.expand-button {
-  position: absolute;
-  left: 60px; /* 緊貼 L1 */
-  top: 10px;
-  z-index: 20;
-  background: #34495e;
-  color: white;
-  border: none;
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
-  cursor: pointer;
-  padding: 8px 4px;
-  font-family: monospace;
-}
-.expand-button:hover {
-  background: #42b983;
-}
-
-/* L2: 檔案列表側邊欄 */
-.l2-sidebar {
-  background-color: #ffffff;
-  border-right: 1px solid #dcdfe6;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.sidebar-content {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
-.l2-header {
-  padding: 1rem;
-  font-weight: bold;
-  border-bottom: 1px solid #dcdfe6;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.l2-header button {
-  padding: 4px 8px;
-  font-size: 12px;
-  background-color: transparent;
-  color: #606266;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-left: 8px;
-}
-
-.l2-header button:hover {
-  background-color: #f2f6fc;
-}
-
-.l2-header button:disabled {
-  color: #c0c4cc;
-  cursor: not-allowed;
-}
-
-.file-list {
-  padding: 1rem;
-  overflow-y: auto;
-  flex-grow: 1;
-}
-
-.empty-list, .file-item {
-  padding: 0.5rem 0;
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.empty-list {
-  color: #909399;
-}
-
-.file-item {
-  cursor: pointer;
-}
-
-.file-item:hover {
-  background-color: #ecf5ff;
-}
-
-/* 寬度調整拉桿 */
-.resizer {
-  width: 5px;
-  cursor: col-resize;
-  background-color: #f0f2f5;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 5;
-}
-.resizer:hover {
-  background-color: #42b983;
-}
-
-/* L3: 主內容區 */
-.main-content {
-  flex-grow: 1;
-  background-color: #fcfcfc;
-  overflow-y: auto;
-}
+.main-content { flex-grow: 1; background-color: #fcfcfc; overflow-y: auto; }
 </style>
