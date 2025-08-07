@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.8.1",
     "@codemirror/lang-markdown": "^6.3.4",
     "@codemirror/language": "^6.11.2",
     "@codemirror/language-data": "^6.5.1",

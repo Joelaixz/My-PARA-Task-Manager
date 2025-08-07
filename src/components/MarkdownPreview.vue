@@ -10,7 +10,6 @@ const props = defineProps<{
 const fileStore = useFileStore();
 
 const isEditing = ref(false);
-// --- 1. 新增：控制編輯器是否展開的狀態 ---
 const isEditorExpanded = ref(false);
 const editableContent = ref('');
 const viewContent = ref(props.content || '');
@@ -31,11 +30,10 @@ function toggleEditMode() {
     editableContent.value = viewContent.value;
   } else {
     viewContent.value = editableContent.value;
-    isEditorExpanded.value = false; // 退出編輯模式時，重置展開狀態
+    isEditorExpanded.value = false;
   }
 }
 
-// --- 2. 新增：切換編輯器展開狀態的函式 ---
 function toggleEditorExpansion() {
   isEditorExpanded.value = !isEditorExpanded.value;
 }
@@ -73,7 +71,7 @@ watch(editableContent, (newContent) => {
 
 watch(() => props.content, (newContent) => {
   isEditing.value = false;
-  isEditorExpanded.value = false; // 切換檔案時，重置展開狀態
+  isEditorExpanded.value = false;
   viewContent.value = newContent || '';
 });
 </script>
@@ -81,13 +79,8 @@ watch(() => props.content, (newContent) => {
 <template>
   <div class="markdown-container">
     <div class="top-controls">
-      <span v-if="isSaving" class="save-status">儲存中...</span>
-      <button v-if="isEditing" @click="toggleEditorExpansion" class="edit-button" :title="isEditorExpanded ? '收合' : '展開'">
-        <svg v-if="!isEditorExpanded" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-        <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6M15 21h6v-6M3 3l7 7M21 21l-7-7"/></svg>
-      </button>
-      <button @click="toggleEditMode" class="edit-button">
-        {{ isEditing ? '完成' : '編輯' }}
+      <button v-if="!isEditing" @click="toggleEditMode" class="edit-button">
+        編輯
       </button>
     </div>
 
@@ -96,7 +89,13 @@ watch(() => props.content, (newContent) => {
         <div class="markdown-body" v-html="renderedHtml"></div>
       </div>
       <div class="pane editor-pane">
-        <MarkdownEditor v-model="editableContent" />
+        <MarkdownEditor 
+          v-model="editableContent"
+          :is-editor-expanded="isEditorExpanded"
+          :is-saving="isSaving"
+          @done="toggleEditMode"
+          @toggle-expansion="toggleEditorExpansion"
+        />
       </div>
     </div>
     
@@ -118,11 +117,29 @@ watch(() => props.content, (newContent) => {
 .top-controls {
   position: fixed; 
   top: 10px;
-  right: 30px;
+  right: 20px;
   z-index: 100;
   display: flex;
   align-items: center;
-  gap: 0.5rem; /* 縮小按鈕間距 */
+  gap: 1rem;
+}
+
+.edit-button {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-button:hover {
+  background-color: var(--accent-color);
+  color: var(--text-accent-contrast);
 }
 
 .split-view {
@@ -136,7 +153,6 @@ watch(() => props.content, (newContent) => {
   width: 50%;
   height: 100%;
   overflow-y: auto;
-  /* 5. 新增：加入過渡動畫讓版面切換更平滑 */
   transition: width 0.3s ease-in-out;
 }
 
@@ -144,18 +160,15 @@ watch(() => props.content, (newContent) => {
   border-left: 1px solid var(--border-color);
 }
 
-/* 6. 新增：展開模式下的核心樣式 */
 .split-view.editor-expanded .preview-pane {
-  width: 0; /* 預覽區寬度變為 0，從而隱藏 */
-  /* 增加 padding: 0; 避免內容在寬度為 0 時還造成影響 */
+  width: 0;
   padding: 0;
   border: none;
 }
 .split-view.editor-expanded .editor-pane {
-  width: 100%; /* 編輯區寬度變為 100%，佔滿全部空間 */
-  border-left: none; /* 隱藏左側邊框 */
+  width: 100%;
+  border-left: none;
 }
-
 
 .preview-pane-single {
   flex-grow: 1;
@@ -179,30 +192,6 @@ watch(() => props.content, (newContent) => {
 .pane.preview-pane::-webkit-scrollbar-thumb {
   background-color: var(--border-color);
   border-radius: 4px;
-}
-
-.save-status {
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.edit-button {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  /* 讓 SVG 圖示垂直置中 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.edit-button:hover {
-  background-color: var(--accent-color);
-  color: var(--text-accent-contrast);
 }
 
 .markdown-body {

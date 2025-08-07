@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain, dialog, session } from 'electron'
+// --- 1. 從 'electron' 匯入 'shell' 模組 ---
+import { app, BrowserWindow, ipcMain, dialog, session, shell } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -17,22 +18,20 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 let win: BrowserWindow | null
 
+// (interface FileEntry, ReadFileResult, and other functions remain the same)
 interface FileEntry {
   name: string;
   path: string;
   isDirectory: boolean;
   children?: FileEntry[];
 }
-
 interface ReadFileResult {
   content: string;
   isBinary: boolean;
   mimeType?: string;
 }
-
 const ALLOWED_EXTENSIONS = ['.md', '.txt', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.pdf'];
 const MAX_RECURSION_DEPTH = 5;
-
 async function readDirectoryRecursively(dirPath: string, currentDepth = 0): Promise<FileEntry[]> {
   if (currentDepth >= MAX_RECURSION_DEPTH) {
     return [];
@@ -68,7 +67,6 @@ async function readDirectoryRecursively(dirPath: string, currentDepth = 0): Prom
     return a.name.localeCompare(b.name);
   });
 }
-
 async function handleFileOpen() {
   if (!win) {
     return null
@@ -89,7 +87,6 @@ async function handleFileOpen() {
     return null
   }
 }
-
 async function handleReadFile(event: Electron.IpcMainInvokeEvent, filePath: string): Promise<ReadFileResult | null> {
   try {
     const extension = path.extname(filePath).toLowerCase();
@@ -121,18 +118,16 @@ async function handleReadFile(event: Electron.IpcMainInvokeEvent, filePath: stri
     return null;
   }
 }
-
-// --- 新增：處理儲存檔案請求的函式 ---
-// 目的：接收檔案路徑與內容，並將內容寫入到指定的檔案中。
 async function handleFileSave(event: Electron.IpcMainInvokeEvent, filePath: string, content: string): Promise<boolean> {
   try {
     await fs.writeFile(filePath, content, 'utf-8');
-    return true; // 寫入成功，回傳 true
+    return true;
   } catch (error) {
     console.error(`Error saving file: ${filePath}`, error);
-    return false; // 寫入失敗，回傳 false
+    return false;
   }
 }
+
 
 function createWindow() {
   win = new BrowserWindow({
@@ -142,6 +137,28 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
+  })
+
+  // --- 2. 新增：監聽 webContents 的事件 ---
+  // 目的：攔截所有在新視窗開啟的意圖 (例如 target="_blank") 和導航事件
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    // 檢查是否為外部連結
+    if (url.startsWith('http:') || url.startsWith('https:')) {
+      // 使用 shell 模組在系統預設瀏覽器中開啟
+      shell.openExternal(url)
+      // 阻止 Electron 建立新視窗
+      return { action: 'deny' }
+    }
+    // 對於內部連結或協議，可以允許
+    return { action: 'allow' }
+  })
+
+  win.webContents.on('will-navigate', (event, url) => {
+    // 同樣的邏輯應用於當前視窗的導航事件
+    if (url.startsWith('http:') || url.startsWith('https:')) {
+      event.preventDefault() // 阻止在 App 內部導航
+      shell.openExternal(url) // 在外部瀏覽器開啟
+    }
   })
 
   win.webContents.on('did-finish-load', () => {
@@ -180,7 +197,6 @@ app.whenReady().then(() => {
 
   ipcMain.handle('get-files', handleFileOpen)
   ipcMain.handle('read-file', handleReadFile)
-  // --- 新增：註冊 'save-file' 事件處理器 ---
   ipcMain.handle('save-file', handleFileSave)
   createWindow()
 })
