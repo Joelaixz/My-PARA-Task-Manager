@@ -15,7 +15,6 @@ interface FileEntry {
   isExpanded?: boolean; 
 }
 
-// --- 新增：定義從主行程讀取檔案後的回傳格式 ---
 // 目的：統一文字與二進位檔案的回傳結構，方便渲染行程處理。
 interface ReadFileResult {
   content: string;    // 檔案內容。若是二進位則為 Base64 編碼字串。
@@ -31,10 +30,12 @@ interface Window {
     send(...args: Parameters<import('electron').IpcRenderer['send']>): void
     invoke(...args: Parameters<import('electron').IpcRenderer['invoke']>): Promise<any>
     
-    // 目的：將回傳型別與 main.ts 中的實際回傳值保持一致。
     getFiles(): Promise<{ folderName: string; files: FileEntry[] } | null>
     
-    // --- 修改：更新 readFile 的回傳型別 ---
     readFile(filePath: string): Promise<ReadFileResult | null>
+
+    // --- 新增：saveFile 函式的型別定義 ---
+    // 讓 TypeScript 知道這個函式的存在、參數及回傳值型別。
+    saveFile(filePath: string, content: string): Promise<boolean>
   }
 }

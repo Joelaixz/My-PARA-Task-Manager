@@ -155,7 +155,7 @@ onUnmounted(() => {
 .l1-sidebar a.router-link-exact-active { background-color: var(--accent-color); color: var(--text-accent-contrast); }
 .expand-button { position: absolute; left: 60px; top: 10px; z-index: 20; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); border-left: none; border-top-right-radius: 4px; border-bottom-right-radius: 4px; cursor: pointer; padding: 8px 4px; font-family: monospace; }
 .expand-button:hover { background: var(--accent-color); }
-.l2-sidebar { background-color: var(--bg-secondary); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; position: relative; transition: width 0.2s ease; }
+.l2-sidebar { background-color: var(--bg-secondary); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; position: relative; }
 .sidebar-content { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
 .l2-header { padding: 0 1rem; height: 50px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; gap: 1rem; }
 .header-title { flex-grow: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
@@ -167,5 +167,5 @@ onUnmounted(() => {
 .feedback-message { padding: 1rem; color: var(--text-secondary); font-size: 14px; text-align: center; }
 .resizer { width: 5px; cursor: col-resize; background-color: transparent; flex-shrink: 0; position: relative; z-index: 5; transition: background-color 0.2s; }
 .resizer:hover, .main-layout.is-resizing .resizer { background-color: var(--accent-color); }
-.main-content { flex-grow: 1; background-color: var(--bg-primary); overflow-y: auto; }
+.main-content { flex-grow: 1; background-color: var(--bg-primary); display: flex; flex-direction: column; }
 </style>

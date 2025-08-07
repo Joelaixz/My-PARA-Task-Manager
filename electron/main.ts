@@ -122,6 +122,18 @@ async function handleReadFile(event: Electron.IpcMainInvokeEvent, filePath: stri
   }
 }
 
+// --- 新增：處理儲存檔案請求的函式 ---
+// 目的：接收檔案路徑與內容，並將內容寫入到指定的檔案中。
+async function handleFileSave(event: Electron.IpcMainInvokeEvent, filePath: string, content: string): Promise<boolean> {
+  try {
+    await fs.writeFile(filePath, content, 'utf-8');
+    return true; // 寫入成功，回傳 true
+  } catch (error) {
+    console.error(`Error saving file: ${filePath}`, error);
+    return false; // 寫入失敗，回傳 false
+  }
+}
+
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
@@ -168,5 +180,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('get-files', handleFileOpen)
   ipcMain.handle('read-file', handleReadFile)
+  // --- 新增：註冊 'save-file' 事件處理器 ---
+  ipcMain.handle('save-file', handleFileSave)
   createWindow()
 })

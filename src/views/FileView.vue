@@ -111,13 +111,13 @@ onMounted(() => {
   flex-direction: column;
   height: 100%;
   width: 100%;
-  overflow-y: auto;
 }
 
 .preview-wrapper {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .feedback-panel {
