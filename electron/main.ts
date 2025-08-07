@@ -24,16 +24,28 @@ interface FileEntry {
   children?: FileEntry[];
 }
 
-// --- 目的：定義允許顯示的檔案類型 ---
 const ALLOWED_EXTENSIONS = ['.md', '.txt', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.pdf'];
+const MAX_RECURSION_DEPTH = 5; // 用於限制讀取資料夾的層級深度
 
-async function readDirectoryRecursively(dirPath: string): Promise<FileEntry[]> {
+/**
+ * 目的：遞迴讀取指定路徑下的目錄結構。
+ * @param dirPath - 要讀取的資料夾路徑。
+ * @param currentDepth - 目前的遞迴深度，用於防止無限遞迴。
+ * @returns 回傳一個 Promise，其解析值為檔案/資料夾結構的陣列。
+ */
+async function readDirectoryRecursively(dirPath: string, currentDepth = 0): Promise<FileEntry[]> {
+  // 如果達到最大深度，則回傳空陣列，停止繼續讀取
+  if (currentDepth >= MAX_RECURSION_DEPTH) {
+    return [];
+  }
+
   const entries = await fs.readdir(dirPath, { withFileTypes: true });
   const files: FileEntry[] = [];
 
   for (const entry of entries) {
     const fullPath = path.join(dirPath, entry.name);
-    if (entry.name === '.git' || entry.name === 'node_modules') {
+    // 忽略常見的、不需要顯示的資料夾或隱藏檔案
+    if (entry.name === '.git' || entry.name === 'node_modules' || entry.name.startsWith('.')) {
       continue;
     }
 
@@ -42,10 +54,10 @@ async function readDirectoryRecursively(dirPath: string): Promise<FileEntry[]> {
         name: entry.name,
         path: fullPath,
         isDirectory: true,
-        children: await readDirectoryRecursively(fullPath)
+        // 遞迴呼叫時，將深度計數器加一
+        children: await readDirectoryRecursively(fullPath, currentDepth + 1)
       });
     } else {
-      // --- 檢查檔案副檔名是否在我們的允許列表中 ---
       const fileExtension = path.extname(entry.name).toLowerCase();
       if (ALLOWED_EXTENSIONS.includes(fileExtension)) {
         files.push({
@@ -57,6 +69,7 @@ async function readDirectoryRecursively(dirPath: string): Promise<FileEntry[]> {
     }
   }
   
+  // 排序，讓資料夾總是在檔案前面
   return files.sort((a, b) => {
     if (a.isDirectory && !b.isDirectory) return -1;
     if (!a.isDirectory && b.isDirectory) return 1;
@@ -89,19 +102,15 @@ async function handleFileOpen() {
   }
 }
 
-// --- 處理讀取檔案內容的函數 ---
-// 目的：提供一個由主行程執行的安全檔案讀取功能。
 async function handleReadFile(event: Electron.IpcMainInvokeEvent, filePath: string): Promise<string | null> {
   try {
-    // 使用 'utf-8' 編碼讀取文字檔案
     const content = await fs.readFile(filePath, 'utf-8');
     return content;
   } catch (error) {
     console.error(`Error reading file: ${filePath}`, error);
-    return null; // 發生錯誤時回傳 null
+    return null;
   }
 }
-
 
 function createWindow() {
   win = new BrowserWindow({
@@ -139,7 +148,6 @@ app.on('activate', () => {
 
 app.whenReady().then(() => {
   ipcMain.handle('get-files', handleFileOpen)
-  // --- 註冊用於讀取檔案內容的 IPC Handler ---
   ipcMain.handle('read-file', handleReadFile)
   createWindow()
 })

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue'
-import { useFileStore } from '../store' // --- 1. 匯入我們建立的 FileStore ---
+import { defineProps } from 'vue'
+import { useFileStore } from '../store'
 
-// --- 型別定義 ---
+// 目的：定義元件所接收的資料結構。
 interface FileEntry {
   name: string;
   path: string;
@@ -11,51 +11,50 @@ interface FileEntry {
   isExpanded?: boolean;
 }
 
-// --- Props ---
 const props = defineProps<{
   entries: FileEntry[]
 }>()
 
-// --- Emits ---
-// 目的：我們不再需要向上發送 selectFile 事件，所以將其從定義中移除。
-const emit = defineEmits<{
-  (e: 'toggleFolder', entry: FileEntry): void
-}>()
-
-// --- 2. 實例化 Store ---
 const fileStore = useFileStore()
 
-// --- 新增：根據檔名回傳對應圖示的函數 ---
-// 目的：讓檔案列表能根據檔案類型顯示不同的圖示，增加可讀性。
+/**
+ * 目的：根據檔案的副檔名回傳對應的 emoji 圖示。
+ * @param fileName - 檔案的完整名稱。
+ * @returns 代表檔案類型的圖示字串。
+ */
 function getIconForFile(fileName: string): string {
   const extension = fileName.split('.').pop()?.toLowerCase();
 
   switch (extension) {
     case 'md':
-      return '📝'; // Markdown
+      return '📝';
     case 'txt':
-      return '📃'; // Text
+      return '📄';
     case 'pdf':
-      return '📕'; // PDF
+      return '📕';
     case 'png':
     case 'jpg':
     case 'jpeg':
     case 'gif':
-      return '🖼️'; // 常見圖片
+      return '🖼️';
     case 'svg':
-      return '🎨'; // SVG 向量圖
+      return '🎨';
     default:
-      return '❔'; // 其他未知檔案
+      return '❔';
   }
 }
 
-// --- 事件處理 ---
-// 目的：點擊目錄時，依然發送事件讓父層處理展開/收合；點擊檔案時，則直接更新全域狀態。
+/**
+ * 目的：處理使用者點擊檔案樹中任一項目的行為。
+ * @param entry - 使用者點擊的 FileEntry 物件。
+ */
 function handleEntryClick(entry: FileEntry) {
   if (entry.isDirectory) {
-    emit('toggleFolder', entry)
+    // 若點擊的是資料夾，直接修改其 isExpanded 狀態來切換展開/收合
+    // Vue 的響應式系統會自動更新畫面
+    entry.isExpanded = !entry.isExpanded;
   } else {
-    // --- 3. 呼叫 Store 的 action 來更新狀態 ---
+    // 若點擊的是檔案，則呼叫 Pinia store 來更新全域選中狀態
     fileStore.selectFile(entry.path)
   }
 }
@@ -64,29 +63,26 @@ function handleEntryClick(entry: FileEntry) {
 <template>
   <div class="file-tree-container">
     <div v-for="entry in props.entries" :key="entry.path" class="file-tree-node">
-      <div 
-        class="file-item" 
-        :class="{ 
+      <div
+        class="file-item"
+        :class="{
           'is-directory': entry.isDirectory,
           'is-selected': !entry.isDirectory && fileStore.selectedFilePath === entry.path
-        }" 
+        }"
         @click="handleEntryClick(entry)"
       >
         <span v-if="entry.isDirectory" class="arrow-icon" :class="{ 'is-expanded': entry.isExpanded }">▶</span>
         <span v-else class="arrow-placeholder"></span>
-        
+
         <span class="type-icon">
           {{ entry.isDirectory ? '📁' : getIconForFile(entry.name) }}
         </span>
-        
+
         <span class="name-label" :title="entry.name">{{ entry.name }}</span>
       </div>
       <div v-if="entry.isDirectory && entry.isExpanded && entry.children?.length">
         <div class="children-wrapper">
-          <FileTree 
-            :entries="entry.children" 
-            @toggle-folder="(childEntry) => emit('toggleFolder', childEntry)"
-          />
+          <FileTree :entries="entry.children" />
         </div>
       </div>
     </div>
@@ -98,12 +94,11 @@ function handleEntryClick(entry: FileEntry) {
   width: max-content;
   min-width: 100%;
 }
-
 .file-item {
   display: flex;
   align-items: center;
-  padding: 6px 8px; /* 增加左右 padding */
-  font-size: 13px; /* 稍微放大字體 */
+  padding: 6px 8px;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -113,23 +108,19 @@ function handleEntryClick(entry: FileEntry) {
   user-select: none;
   color: var(--text-secondary);
 }
-
 .file-item:hover {
   background-color: var(--bg-tertiary);
   color: var(--text-primary);
 }
-
 .file-item.is-selected {
   background-color: var(--accent-color-muted);
   color: var(--text-primary);
   font-weight: 500;
 }
-
 .is-directory {
   color: var(--text-primary);
   font-weight: 500;
 }
-
 .arrow-icon {
   width: 1em;
   font-size: 10px;
@@ -137,29 +128,24 @@ function handleEntryClick(entry: FileEntry) {
   text-align: center;
   transition: transform 0.2s ease;
 }
-
 .arrow-icon.is-expanded {
   transform: rotate(90deg);
 }
-
 .arrow-placeholder {
   display: inline-block;
   width: 1em;
   margin-right: 4px;
 }
-
 .type-icon {
   width: 1.2em;
   text-align: center;
   margin-right: 8px;
 }
-
 .name-label {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .children-wrapper {
-  padding-left: 0px;
+  padding-left: 8px;
 }
 </style>

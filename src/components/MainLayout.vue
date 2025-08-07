@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted, watch } from 'vue' // --- 1. 匯入 watch ---
-import { RouterLink, RouterView, useRouter } from 'vue-router' // --- 2. 匯入 useRouter ---
+import { ref, computed, onUnmounted, watch } from 'vue'
+import { RouterLink, RouterView, useRouter } from 'vue-router'
 import FileTree from './FileTree.vue'
-import { useFileStore } from '../store' // --- 3. 匯入 FileStore ---
+import { useFileStore } from '../store'
 
-// --- 4. 實例化 router 和 store ---
 const router = useRouter()
 const fileStore = useFileStore()
 
-// --- 型別定義 ---
 interface FileEntry {
   name: string;
   path: string;
@@ -17,17 +15,13 @@ interface FileEntry {
   isExpanded?: boolean;
 }
 
-// --- 檔案總管相關狀態 ---
 const fileList = ref<FileEntry[]>([])
 const selectedFolderName = ref('檔案總管')
 const isLoading = ref(false)
-
-// --- 側邊欄狀態管理 ---
 const isCollapsed = ref(false)
 const sidebarWidth = ref(240)
 const isResizing = ref(false)
 
-// --- DOM 事件處理 ---
 function startResize(event: MouseEvent) {
   event.preventDefault()
   isResizing.value = true
@@ -39,7 +33,7 @@ function startResize(event: MouseEvent) {
 function handleResizing(event: MouseEvent) {
   if (!isResizing.value) return
   const newWidth = event.clientX - 60
-  if (newWidth >= 0 && newWidth <= 500) {
+  if (newWidth >= 180 && newWidth <= 500) {
     sidebarWidth.value = newWidth
   }
 }
@@ -62,17 +56,22 @@ const sidebarStyle = computed(() => ({
   overflow: 'hidden'
 }))
 
-// --- IPC 通訊 ---
 async function handleLoadFiles() {
   isLoading.value = true
   fileList.value = []
   try {
     const result = await window.ipcRenderer.getFiles()
     if (result) {
+      /**
+       * 目的：遞迴地為所有資料夾添加 isExpanded 狀態屬性。
+       * @param entries - 從主行程接收到的檔案/資料夾陣列。
+       * @returns 處理後，帶有 isExpanded 狀態的陣列。
+       */
       const addExpansionState = (entries: FileEntry[]): FileEntry[] => {
         return entries.map(entry => {
           if (entry.isDirectory) {
-            return { ...entry, isExpanded: true, children: entry.children ? addExpansionState(entry.children) : [] };
+            // 將資料夾的預設展開狀態設定為 false (收合)
+            return { ...entry, isExpanded: false, children: entry.children ? addExpansionState(entry.children) : [] };
           }
           return entry;
         });
@@ -90,16 +89,7 @@ async function handleLoadFiles() {
   }
 }
 
-// --- 事件處理 ---
-function handleToggleFolder(folder: FileEntry) {
-  if (folder.isDirectory) {
-    folder.isExpanded = !folder.isExpanded;
-  }
-}
-
-// --- 5. 新增監聽器，將狀態變化與路由導航連結起來 ---
-watch(() => fileStore.selectedFilePath, (newPath, oldPath) => {
-  // 只有當 newPath 有值 (代表一個檔案被選中)，且目前不在 /view 頁面時，才進行跳轉
+watch(() => fileStore.selectedFilePath, (newPath) => {
   if (newPath && router.currentRoute.value.path !== '/view') {
     router.push('/view')
   }
@@ -143,7 +133,6 @@ onUnmounted(() => {
           <FileTree 
             v-else 
             :entries="fileList" 
-            @toggle-folder="handleToggleFolder"
           />
         </div>
       </div>
@@ -164,25 +153,19 @@ onUnmounted(() => {
 .l1-sidebar a { color: var(--text-secondary); text-decoration: none; font-size: 1.5rem; font-weight: bold; margin-bottom: 1.5rem; padding: 0.5rem; border-radius: 8px; transition: background-color 0.3s, color 0.3s; }
 .l1-sidebar a:hover { background-color: var(--bg-tertiary); color: var(--text-primary); }
 .l1-sidebar a.router-link-exact-active { background-color: var(--accent-color); color: var(--text-accent-contrast); }
-
 .expand-button { position: absolute; left: 60px; top: 10px; z-index: 20; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); border-left: none; border-top-right-radius: 4px; border-bottom-right-radius: 4px; cursor: pointer; padding: 8px 4px; font-family: monospace; }
 .expand-button:hover { background: var(--accent-color); }
-
-.l2-sidebar { background-color: var(--bg-secondary); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; position: relative; }
+.l2-sidebar { background-color: var(--bg-secondary); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; position: relative; transition: width 0.2s ease; }
 .sidebar-content { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-
 .l2-header { padding: 0 1rem; height: 50px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; gap: 1rem; }
 .header-title { flex-grow: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
 .header-actions { display: flex; align-items: center; flex-shrink: 0; }
 .header-actions button { font-size: 16px; background: transparent; color: var(--text-secondary); border: none; border-radius: 4px; cursor: pointer; padding: 4px; margin-left: 8px; }
 .header-actions button:hover { background-color: var(--bg-tertiary); color: var(--text-primary); }
 .header-actions button:disabled { color: #666; cursor: not-allowed; }
-
 .file-list-container { padding: 0.5rem; overflow-y: auto; flex-grow: 1; }
 .feedback-message { padding: 1rem; color: var(--text-secondary); font-size: 14px; text-align: center; }
-
 .resizer { width: 5px; cursor: col-resize; background-color: transparent; flex-shrink: 0; position: relative; z-index: 5; transition: background-color 0.2s; }
 .resizer:hover, .main-layout.is-resizing .resizer { background-color: var(--accent-color); }
-
 .main-content { flex-grow: 1; background-color: var(--bg-primary); overflow-y: auto; }
 </style>
