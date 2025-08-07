@@ -30,6 +30,7 @@ function getIconForFile(fileName: string): string {
       return '📝';
     case 'txt':
       return '📄';
+    // --- 新增 PDF 與圖片的圖示 ---
     case 'pdf':
       return '📕';
     case 'png':
@@ -40,7 +41,7 @@ function getIconForFile(fileName: string): string {
     case 'svg':
       return '🎨';
     default:
-      return '❔';
+      return '❔'; // 預設圖示
   }
 }
 

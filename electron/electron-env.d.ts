@@ -15,6 +15,14 @@ interface FileEntry {
   isExpanded?: boolean; 
 }
 
+// --- 新增：定義從主行程讀取檔案後的回傳格式 ---
+// 目的：統一文字與二進位檔案的回傳結構，方便渲染行程處理。
+interface ReadFileResult {
+  content: string;    // 檔案內容。若是二進位則為 Base64 編碼字串。
+  isBinary: boolean;  // 標記內容是否為二進位格式。
+  mimeType?: string;  // 如果是二進位檔案，則提供其 MIME 類型。
+}
+
 // 用於渲染行程，在 `preload.ts` 中暴露
 interface Window {
   ipcRenderer: {
@@ -26,7 +34,7 @@ interface Window {
     // 目的：將回傳型別與 main.ts 中的實際回傳值保持一致。
     getFiles(): Promise<{ folderName: string; files: FileEntry[] } | null>
     
-    // --- 定義讀取檔案內容的函式型別 ---
-    readFile(filePath: string): Promise<string | null>
+    // --- 修改：更新 readFile 的回傳型別 ---
+    readFile(filePath: string): Promise<ReadFileResult | null>
   }
 }

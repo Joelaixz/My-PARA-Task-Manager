@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, session } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -24,37 +24,31 @@ interface FileEntry {
   children?: FileEntry[];
 }
 
-const ALLOWED_EXTENSIONS = ['.md', '.txt', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.pdf'];
-const MAX_RECURSION_DEPTH = 5; // 用於限制讀取資料夾的層級深度
+interface ReadFileResult {
+  content: string;
+  isBinary: boolean;
+  mimeType?: string;
+}
 
-/**
- * 目的：遞迴讀取指定路徑下的目錄結構。
- * @param dirPath - 要讀取的資料夾路徑。
- * @param currentDepth - 目前的遞迴深度，用於防止無限遞迴。
- * @returns 回傳一個 Promise，其解析值為檔案/資料夾結構的陣列。
- */
+const ALLOWED_EXTENSIONS = ['.md', '.txt', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.pdf'];
+const MAX_RECURSION_DEPTH = 5;
+
 async function readDirectoryRecursively(dirPath: string, currentDepth = 0): Promise<FileEntry[]> {
-  // 如果達到最大深度，則回傳空陣列，停止繼續讀取
   if (currentDepth >= MAX_RECURSION_DEPTH) {
     return [];
   }
-
   const entries = await fs.readdir(dirPath, { withFileTypes: true });
   const files: FileEntry[] = [];
-
   for (const entry of entries) {
     const fullPath = path.join(dirPath, entry.name);
-    // 忽略常見的、不需要顯示的資料夾或隱藏檔案
     if (entry.name === '.git' || entry.name === 'node_modules' || entry.name.startsWith('.')) {
       continue;
     }
-
     if (entry.isDirectory()) {
       files.push({
         name: entry.name,
         path: fullPath,
         isDirectory: true,
-        // 遞迴呼叫時，將深度計數器加一
         children: await readDirectoryRecursively(fullPath, currentDepth + 1)
       });
     } else {
@@ -68,8 +62,6 @@ async function readDirectoryRecursively(dirPath: string, currentDepth = 0): Prom
       }
     }
   }
-  
-  // 排序，讓資料夾總是在檔案前面
   return files.sort((a, b) => {
     if (a.isDirectory && !b.isDirectory) return -1;
     if (!a.isDirectory && b.isDirectory) return 1;
@@ -81,18 +73,14 @@ async function handleFileOpen() {
   if (!win) {
     return null
   }
-  
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {
     properties: ['openDirectory']
   })
-
   if (canceled || filePaths.length === 0) {
     return null
   }
-
   const directoryPath = filePaths[0]
   const folderName = path.basename(directoryPath)
-
   try {
     const files = await readDirectoryRecursively(directoryPath)
     return { folderName, files }
@@ -102,10 +90,32 @@ async function handleFileOpen() {
   }
 }
 
-async function handleReadFile(event: Electron.IpcMainInvokeEvent, filePath: string): Promise<string | null> {
+async function handleReadFile(event: Electron.IpcMainInvokeEvent, filePath: string): Promise<ReadFileResult | null> {
   try {
-    const content = await fs.readFile(filePath, 'utf-8');
-    return content;
+    const extension = path.extname(filePath).toLowerCase();
+    const textExtensions = ['.md', '.txt'];
+    const binaryMimeTypes: { [key: string]: string } = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml',
+      '.pdf': 'application/pdf',
+    };
+    if (textExtensions.includes(extension)) {
+      const content = await fs.readFile(filePath, 'utf-8');
+      return { content, isBinary: false };
+    } else if (binaryMimeTypes[extension]) {
+      const buffer = await fs.readFile(filePath);
+      const content = buffer.toString('base64');
+      return {
+        content,
+        isBinary: true,
+        mimeType: binaryMimeTypes[extension],
+      };
+    }
+    console.warn(`Attempted to read unsupported file type: ${filePath}`);
+    return null;
   } catch (error) {
     console.error(`Error reading file: ${filePath}`, error);
     return null;
@@ -141,12 +151,21 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+  if (BrowserWindow.getAllWindows().length === 0) {
     createWindow()
   }
 })
 
 app.whenReady().then(() => {
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': ["default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"]
+      }
+    })
+  })
+
   ipcMain.handle('get-files', handleFileOpen)
   ipcMain.handle('read-file', handleReadFile)
   createWindow()

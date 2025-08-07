@@ -1,27 +1,34 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { useFileStore } from '../store'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
+import ImagePreview from '../components/ImagePreview.vue'
+import PdfPreview from '../components/PdfPreview.vue'
 
-// --- 狀態管理 ---
+// 目的：用一個物件來儲存從主行程獲取的完整檔案資訊。
+interface FileData {
+  content: string;    // 文字內容或 Base64 字串
+  isBinary: boolean;
+  mimeType?: string;
+  extension: string;
+}
+
 const fileStore = useFileStore()
 const isLoading = ref(false)
-const fileContent = ref<string | null>(null)
 const errorMessage = ref<string | null>(null)
+const currentFileData = ref<FileData | null>(null)
 
-// --- 函數：載入並更新檔案內容 ---
 // 目的：根據給定的檔案路徑，透過 IPC 通道非同步讀取檔案內容。
 async function loadFileContent(filePath: string) {
   isLoading.value = true
-  fileContent.value = null
+  currentFileData.value = null
   errorMessage.value = null
   try {
-    // 呼叫我們在 preload.ts 中暴露的 readFile 函式
-    const content = await window.ipcRenderer.readFile(filePath)
-    if (content !== null) {
-      fileContent.value = content
+    const result = await window.ipcRenderer.readFile(filePath)
+    if (result) {
+      const extension = filePath.split('.').pop()?.toLowerCase() || ''
+      currentFileData.value = { ...result, extension }
     } else {
-      // 處理檔案讀取失敗，但 IPC 呼叫本身成功的情況
       errorMessage.value = `無法讀取檔案內容，檔案可能已損毀或權限不足：${filePath}`
     }
   } catch (error) {
@@ -32,25 +39,35 @@ async function loadFileContent(filePath: string) {
   }
 }
 
-// --- 監聽器 (Watcher) ---
-// 目的：監聽 Pinia Store 中 selectedFilePath 的變化。
-// 當使用者在檔案樹點擊新檔案時，這個監聽器就會被觸發。
+// 目的：根據當前檔案的副檔名，決定要使用哪個預覽元件。
+const activePreviewComponent = computed(() => {
+  if (!currentFileData.value) return null
+
+  const ext = currentFileData.value.extension
+  if (['md', 'txt'].includes(ext)) {
+    return MarkdownPreview
+  }
+  if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(ext)) {
+    return ImagePreview
+  }
+  if (ext === 'pdf') {
+    return PdfPreview
+  }
+  return null
+})
+
+// 監聽 Pinia Store 中 selectedFilePath 的變化。
 watch(() => fileStore.selectedFilePath, (newPath) => {
   if (newPath) {
     loadFileContent(newPath)
   } else {
-    // 如果路徑變為 null (例如，取消選中)，則清空畫面
-    fileContent.value = null
+    currentFileData.value = null
     errorMessage.value = null
     isLoading.value = false
   }
-}, {
-  // immediate: true // 如果需要在元件首次載入時就檢查一次狀態，可以開啟此選項
 })
 
-// --- 生命週期鉤子 (Lifecycle Hook) ---
-// 目的：確保當元件第一次被掛載時，如果 Store 中已經有選中的檔案路徑，
-// (例如，使用者在切換路由前就已經選好檔案)，也能正確載入內容。
+// 確保當元件第一次被掛載時，也能正確載入內容。
 onMounted(() => {
   if (fileStore.selectedFilePath) {
     loadFileContent(fileStore.selectedFilePath);
@@ -66,9 +83,22 @@ onMounted(() => {
     <div v-else-if="errorMessage" class="feedback-panel error">
       <p>{{ errorMessage }}</p>
     </div>
-    <div v-else-if="fileContent !== null">
-      <MarkdownPreview :content="fileContent" />
+    
+    <div v-else-if="currentFileData && activePreviewComponent" class="preview-wrapper">
+      <MarkdownPreview
+        v-if="!currentFileData.isBinary && activePreviewComponent === MarkdownPreview"
+        :content="currentFileData.content"
+      />
+      <ImagePreview
+        v-else-if="currentFileData.isBinary && activePreviewComponent === ImagePreview && currentFileData.mimeType"
+        :content="{ base64: currentFileData.content, mimeType: currentFileData.mimeType }"
+      />
+      <PdfPreview
+        v-else-if="currentFileData.isBinary && activePreviewComponent === PdfPreview && currentFileData.mimeType"
+        :content="{ base64: currentFileData.content, mimeType: currentFileData.mimeType }"
+      />
     </div>
+    
     <div v-else class="feedback-panel">
       <p>請從左側檔案總管選擇一個檔案來預覽。</p>
     </div>
@@ -82,6 +112,12 @@ onMounted(() => {
   height: 100%;
   width: 100%;
   overflow-y: auto;
+}
+
+.preview-wrapper {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .feedback-panel {
