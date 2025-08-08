@@ -93,26 +93,36 @@ async function handleGetFiles(event: Electron.IpcMainInvokeEvent, directoryPath?
   }
 }
 
+// --- 1. 修改 handleReadFile 函式邏輯 ---
 async function handleReadFile(event: Electron.IpcMainInvokeEvent, filePath: string): Promise<ReadFileResult | null> {
   try {
-    if (isBinaryPath(filePath)) {
-       const binaryMimeTypes: { [key: string]: string } = {
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.gif': 'image/gif',
-        '.svg': 'image/svg+xml',
-        '.pdf': 'application/pdf',
-      };
-      const extension = path.extname(filePath).toLowerCase();
+    const extension = path.extname(filePath).toLowerCase();
+
+    // 定義哪些副檔名應被視為二進位檔或需要 Base64 編碼的檔案
+    const binaryMimeTypes: { [key: string]: string } = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.pdf': 'application/pdf',
+      // --- 2. 新增 SVG 的處理規則 ---
+      // 目的：將 .svg 檔明確指定為圖片類型，並強制進行 Base64 編碼。
+      '.svg': 'image/svg+xml', 
+    };
+
+    // --- 3. 調整判斷條件 ---
+    // 目的：只要檔案副檔名存在於 binaryMimeTypes 中，就執行二進位/Base64 處理流程。
+    if (binaryMimeTypes[extension] || isBinaryPath(filePath)) {
       const buffer = await fs.readFile(filePath);
       const content = buffer.toString('base64');
       return {
         content,
         isBinary: true,
+        // 如果 mimeType 未定義 (例如 isBinaryPath 判斷為 true 但不在我們的列表中)，提供一個預設值
         mimeType: binaryMimeTypes[extension] || 'application/octet-stream',
       };
     } else {
+      // 保持對純文字檔的處理不變
       const content = await fs.readFile(filePath, 'utf-8');
       return { content, isBinary: false };
     }
@@ -121,6 +131,7 @@ async function handleReadFile(event: Electron.IpcMainInvokeEvent, filePath: stri
     return null;
   }
 }
+
 async function handleFileSave(event: Electron.IpcMainInvokeEvent, filePath: string, content: string): Promise<boolean> {
   try {
     await fs.writeFile(filePath, content, 'utf-8');
@@ -131,7 +142,6 @@ async function handleFileSave(event: Electron.IpcMainInvokeEvent, filePath: stri
   }
 }
 
-// --- 1. 修改建立檔案/資料夾的函式 ---
 async function handleCreateFile(event: Electron.IpcMainInvokeEvent, parentDir: string, fileName: string, rootPath: string) {
   if (!fileName || fileName.includes('/') || fileName.includes('\\') || !rootPath) {
     return null;
@@ -139,9 +149,7 @@ async function handleCreateFile(event: Electron.IpcMainInvokeEvent, parentDir: s
   const fullPath = path.join(parentDir, fileName);
   try {
     await fs.writeFile(fullPath, '', { flag: 'wx' });
-    // 建立成功後，立即重新讀取整個檔案樹
     const updatedFiles = await readDirectoryRecursively(rootPath);
-    // 回傳新路徑和更新後的檔案樹
     return { newPath: fullPath, files: updatedFiles };
   } catch (error) {
     console.error(`Error creating file: ${fullPath}`, error);
@@ -156,9 +164,7 @@ async function handleCreateFolder(event: Electron.IpcMainInvokeEvent, parentDir:
   const fullPath = path.join(parentDir, folderName);
   try {
     await fs.mkdir(fullPath, { recursive: false });
-    // 建立成功後，立即重新讀取整個檔案樹
     const updatedFiles = await readDirectoryRecursively(rootPath);
-    // 回傳新路徑和更新後的檔案樹
     return { newPath: fullPath, files: updatedFiles };
   } catch (error) {
     console.error(`Error creating folder: ${fullPath}`, error);

@@ -2,7 +2,6 @@ import { defineConfig } from 'vite'
 import path from 'node:path'
 import electron from 'vite-plugin-electron/simple'
 import vue from '@vitejs/plugin-vue'
-// --- 1. 匯入我們剛安裝的外掛程式 ---
 import { viteStaticCopy } from 'vite-plugin-static-copy'
 
 // https://vitejs.dev/config/
@@ -27,13 +26,12 @@ export default defineConfig({
         ? undefined
         : {},
     }),
-    // --- 2. 新增 static copy 外掛程式的設定 ---
-    // 目的：在建置 (build) 階段，將 PDF.js 的 worker 檔案複製到 dist 目錄下。
-    // 這樣 Electron 應用程式在執行時才能正確載入它來解析 PDF。
+    // --- 1. 修改 worker 檔案的路徑 ---
+    // 目的：對應 pdfjs-dist v4 的 worker 檔名 (pdf.worker.js)，確保建置時能複製正確的檔案。
     viteStaticCopy({
       targets: [
         {
-          src: 'node_modules/pdfjs-dist/build/pdf.worker.mjs',
+          src: 'node_modules/pdfjs-dist/build/pdf.worker.js',
           dest: '.'
         }
       ]
