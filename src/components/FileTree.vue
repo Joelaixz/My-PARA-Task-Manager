@@ -8,6 +8,7 @@ interface FileEntry {
   path: string;
   isDirectory: boolean;
   children?: FileEntry[];
+  // isExpanded 屬性雖然還存在於介面中，但我們不再直接依賴它來渲染
   isExpanded?: boolean;
 }
 
@@ -15,6 +16,8 @@ const props = defineProps<{
   entries: FileEntry[]
 }>()
 
+// --- 1. 取得 file store 的實例 ---
+// 目的：讓元件可以直接存取和操作共享的狀態。
 const fileStore = useFileStore()
 
 function getIconForFile(fileName: string): string {
@@ -35,8 +38,9 @@ function getIconForFile(fileName: string): string {
  */
 function handleEntryClick(entry: FileEntry) {
   if (entry.isDirectory) {
-    // 直接修改 props 傳來的物件狀態，Vue 3 的響應式系統可以處理
-    entry.isExpanded = !entry.isExpanded;
+    // --- 2. 修改：不再直接修改 entry 物件的狀態 ---
+    // 而是呼叫 store 的 action 來集中管理狀態變更。
+    fileStore.toggleFolderExpansion(entry.path);
     fileStore.selectFolder(entry.path);
   } else {
     fileStore.selectFile(entry.path)
@@ -57,7 +61,7 @@ function handleEntryClick(entry: FileEntry) {
         }"
         @click="handleEntryClick(entry)"
       >
-        <span v-if="entry.isDirectory" class="arrow-icon" :class="{ 'is-expanded': entry.isExpanded }">▶</span>
+        <span v-if="entry.isDirectory" class="arrow-icon" :class="{ 'is-expanded': fileStore.expandedFolderPaths.has(entry.path) }">▶</span>
         <span v-else class="arrow-placeholder"></span>
 
         <span class="type-icon">
@@ -66,7 +70,7 @@ function handleEntryClick(entry: FileEntry) {
 
         <span class="name-label" :title="entry.name">{{ entry.name }}</span>
       </div>
-      <div v-if="entry.isDirectory && entry.isExpanded && entry.children?.length">
+      <div v-if="entry.isDirectory && fileStore.expandedFolderPaths.has(entry.path) && entry.children?.length">
         <div class="children-wrapper">
           <FileTree :entries="entry.children" />
         </div>

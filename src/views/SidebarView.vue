@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+// `path-browserify` 仍然需要，用於選中檔案時取得父目錄路徑
 import path from 'path-browserify'
 import FileTree from '../components/FileTree.vue'
 import SidebarHeader from '../components/SidebarHeader.vue'
@@ -15,13 +16,13 @@ interface FileEntry {
   path: string;
   isDirectory: boolean;
   children?: FileEntry[];
-  isExpanded?: boolean;
+  isExpanded?: boolean; // 這個屬性已不再被使用，但為了型別相容性暫時保留
 }
 
 const isDialogVisible = ref(false)
 const dialogTitle = ref('')
-const showExtensionDialog = ref(false) 
-const fileExtensions = ref(['.md', '.txt']) 
+const showExtensionDialog = ref(false)
+const fileExtensions = ref(['.md', '.txt'])
 const creationType = ref<'file' | 'folder' | null>(null);
 const currentCreateFunction = ref<(parentDir: string, name: string, rootPath: string) => Promise<{ newPath: string; files: FileEntry[] } | null>>()
 
@@ -44,7 +45,7 @@ function startResize(event: MouseEvent) {
 
 function handleResizing(event: MouseEvent) {
   if (!isResizing.value) return
-  const newWidth = event.clientX - 60 
+  const newWidth = event.clientX - 60
   if (newWidth >= 180 && newWidth <= 500) {
     sidebarWidth.value = newWidth
   }
@@ -68,30 +69,8 @@ const sidebarStyle = computed(() => ({
   overflow: 'hidden'
 }))
 
-// --- 1. 修改：建立一個新的、更可靠的資料處理函式 ---
-/**
- * 目的：從原始資料遞迴建立一個新的、具有完整響應式狀態的檔案樹。
- * @param entries - 從主行程接收到的原始檔案/資料夾陣列。
- * @param targetPath - (可選) 需要自動展開到的目標路徑。
- * @returns 處理後，帶有正確 isExpanded 狀態的陣列。
- */
-function processTreeData(entries: FileEntry[], targetPath?: string): FileEntry[] {
-  return entries.map(entry => {
-    if (entry.isDirectory) {
-      let isExpanded = false;
-      // 如果提供了 targetPath，則檢查當前目錄是否在該路徑上
-      if (targetPath && (targetPath === entry.path || targetPath.startsWith(entry.path + path.sep))) {
-        isExpanded = true;
-      }
-      return { 
-        ...entry, 
-        isExpanded,
-        children: entry.children ? processTreeData(entry.children, targetPath) : [] 
-      };
-    }
-    return entry;
-  });
-}
+// --- 1. 移除 `getExpandedPaths` 和 `processTreeData` 函式 ---
+// 說明：這些管理展開狀態的邏輯現在已經被 Pinia Store 取代。
 
 async function handleLoadFiles(directoryPath?: string) {
   isLoading.value = true
@@ -99,16 +78,22 @@ async function handleLoadFiles(directoryPath?: string) {
     fileList.value = []
     rootPath.value = null
   }
+  
+  // --- 2. 修改：在載入新目錄前，先清除 Store 中的舊展開狀態 ---
+  fileStore.collapseAllFolders();
+
   try {
     const result = await window.ipcRenderer.getFiles(directoryPath)
     if (result) {
-      // --- 2. 使用新的函式來處理資料 ---
-      fileList.value = processTreeData(result.files);
+      // --- 3. 修改：直接賦值，不再需要 processTreeData 進行處理 ---
+      fileList.value = result.files;
       selectedFolderName.value = result.folderName;
-      rootPath.value = result.rootPath; 
-      
+      rootPath.value = result.rootPath;
+
       if (!directoryPath) {
          fileStore.selectFolder(rootPath.value);
+         // 預設將根目錄設為展開
+         fileStore.toggleFolderExpansion(rootPath.value);
       }
     } else if (!directoryPath) {
       selectedFolderName.value = '檔案總管';
@@ -128,7 +113,7 @@ function triggerCreateNewItem(type: 'file' | 'folder') {
     alert('請先選擇一個根資料夾。');
     return;
   }
-  
+
   creationType.value = type;
 
   if (type === 'file') {
@@ -140,7 +125,7 @@ function triggerCreateNewItem(type: 'file' | 'folder') {
     showExtensionDialog.value = false;
     currentCreateFunction.value = window.ipcRenderer.createFolder;
   }
-  
+
   isDialogVisible.value = true;
 }
 
@@ -148,26 +133,26 @@ async function handleDialogConfirm(newItemName: string) {
   if (!newItemName || !currentCreateFunction.value || !rootPath.value) {
     return;
   }
-  
+
   const parentDir = fileStore.selectedFolderPath || rootPath.value;
 
   if (!parentDir) {
     alert('無法確定建立位置，請先選擇一個資料夾。');
     return;
   }
-  
+
+  // --- 4. 移除：不再需要手動保存展開狀態 ---
   isLoading.value = true;
   try {
     const result = await currentCreateFunction.value(parentDir, newItemName, rootPath.value);
-    
-    if (result) {
-      // 步驟 A: 使用新函式處理資料，直接產生最終狀態
-      fileList.value = processTreeData(result.files, result.newPath);
 
-      // 步驟 B: 等待 DOM 更新完成
+    if (result) {
+      // --- 5. 修改：直接用新的檔案列表更新，並呼叫 store action 來處理展開 ---
+      fileList.value = result.files;
+      fileStore.ensurePathIsExpanded(result.newPath);
+
       await nextTick();
 
-      // 步驟 C: 執行後續操作
       if (creationType.value === 'file') {
         fileStore.setPendingEdit();
         fileStore.selectFile(result.newPath);
@@ -208,7 +193,7 @@ onUnmounted(() => {
 
     <aside class="l2-sidebar" :style="sidebarStyle">
       <div v-if="!isCollapsed" class="sidebar-content">
-        
+
         <SidebarHeader
           :folder-name="selectedFolderName"
           :is-loading="isLoading"
@@ -217,15 +202,15 @@ onUnmounted(() => {
           @create-file="triggerCreateNewItem('file')"
           @create-folder="triggerCreateNewItem('folder')"
         />
-        
+
         <div class="file-list-container">
           <div v-if="isLoading" class="feedback-message">讀取中...</div>
           <div v-else-if="fileList.length === 0" class="feedback-message">
             點擊 ↻ 圖示選擇資料夾
           </div>
-          <FileTree 
-            v-else 
-            :entries="fileList" 
+          <FileTree
+            v-else
+            :entries="fileList"
           />
         </div>
       </div>
@@ -233,7 +218,7 @@ onUnmounted(() => {
 
     <div v-if="!isCollapsed" @mousedown="startResize" class="resizer"></div>
 
-    <InputDialog 
+    <InputDialog
       v-model="isDialogVisible"
       :title="dialogTitle"
       :show-extension-select="showExtensionDialog"
@@ -256,7 +241,7 @@ onUnmounted(() => {
 .expand-button {
   position: absolute;
   left: 0;
-  top: 10px;
+  top: 40px;
   z-index: 20;
   background: var(--bg-tertiary);
   color: var(--text-primary);
