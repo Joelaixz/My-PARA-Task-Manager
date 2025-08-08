@@ -1,8 +1,6 @@
 <script setup lang="ts">
-// --- 1. 簡化 import ---
-// 目的：移除所有已遷移至 SidebarView 的邏輯，只留下版面所需的部分。
 import { RouterLink, RouterView } from 'vue-router'
-import SidebarView from '../views/SidebarView.vue'
+import SidebarView from './SidebarView.vue'
 </script>
 
 <template>
@@ -24,8 +22,6 @@ import SidebarView from '../views/SidebarView.vue'
 </template>
 
 <style scoped>
-/* 4. 簡化樣式 */
-/* 目的：移除所有已遷移至 SidebarView 的樣式，只保留 MainLayout 自身的佈局樣式。 */
 .main-layout {
   display: flex;
   height: 100vh;

@@ -70,10 +70,26 @@ watch(editableContent, (newContent) => {
 });
 
 watch(() => props.content, (newContent) => {
+  // 當 props.content 變化時 (例如切換檔案)，總是重設編輯狀態
   isEditing.value = false;
   isEditorExpanded.value = false;
   viewContent.value = newContent || '';
 });
+
+// --- 1. 新增：監聽 selectedFilePath 的變化 ---
+// 目的：用來處理「自動進入編輯模式」的命令
+watch(() => fileStore.selectedFilePath, (newPath) => {
+  // 只有當有新路徑，且 store 中有待處理的編輯命令時，才執行
+  if (newPath && fileStore.pendingEdit) {
+    // 使用 nextTick 確保 DOM 已經更新完畢，元件已經準備好
+    import('vue').then(({ nextTick }) => {
+      nextTick(() => {
+        toggleEditMode(); // 進入編輯模式
+        fileStore.clearPendingEdit(); // 清除命令，避免下次切換檔案時再次觸發
+      });
+    });
+  }
+}, { immediate: true }); // 使用 immediate 確保元件初次掛載時也能觸發檢查
 </script>
 
 <template>
@@ -201,7 +217,6 @@ watch(() => props.content, (newContent) => {
   word-wrap: break-word;
 }
 
-/* (後續的 .markdown-body :deep() 樣式保持不變) */
 .markdown-body :deep(h1),
 .markdown-body :deep(h2),
 .markdown-body :deep(h3),

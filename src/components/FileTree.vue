@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { defineProps } from 'vue'
+import path from 'path-browserify'
 import { useFileStore } from '../store'
 
-// 目的：定義元件所接收的資料結構。
 interface FileEntry {
   name: string;
   path: string;
@@ -17,31 +17,15 @@ const props = defineProps<{
 
 const fileStore = useFileStore()
 
-/**
- * 目的：根據檔案的副檔名回傳對應的 emoji 圖示。
- * @param fileName - 檔案的完整名稱。
- * @returns 代表檔案類型的圖示字串。
- */
 function getIconForFile(fileName: string): string {
   const extension = fileName.split('.').pop()?.toLowerCase();
-
   switch (extension) {
-    case 'md':
-      return '📝';
-    case 'txt':
-      return '📄';
-    // --- 新增 PDF 與圖片的圖示 ---
-    case 'pdf':
-      return '📕';
-    case 'png':
-    case 'jpg':
-    case 'jpeg':
-    case 'gif':
-      return '🖼️';
-    case 'svg':
-      return '🎨';
-    default:
-      return '❔'; // 預設圖示
+    case 'md': return '📝';
+    case 'txt': return '📄';
+    case 'pdf': return '📕';
+    case 'png': case 'jpg': case 'jpeg': case 'gif': return '🖼️';
+    case 'svg': return '🎨';
+    default: return '❔';
   }
 }
 
@@ -51,12 +35,12 @@ function getIconForFile(fileName: string): string {
  */
 function handleEntryClick(entry: FileEntry) {
   if (entry.isDirectory) {
-    // 若點擊的是資料夾，直接修改其 isExpanded 狀態來切換展開/收合
-    // Vue 的響應式系統會自動更新畫面
+    // 直接修改 props 傳來的物件狀態，Vue 3 的響應式系統可以處理
     entry.isExpanded = !entry.isExpanded;
+    fileStore.selectFolder(entry.path);
   } else {
-    // 若點擊的是檔案，則呼叫 Pinia store 來更新全域選中狀態
     fileStore.selectFile(entry.path)
+    fileStore.selectFolder(path.dirname(entry.path));
   }
 }
 </script>
@@ -68,7 +52,8 @@ function handleEntryClick(entry: FileEntry) {
         class="file-item"
         :class="{
           'is-directory': entry.isDirectory,
-          'is-selected': !entry.isDirectory && fileStore.selectedFilePath === entry.path
+          'is-selected-file': !entry.isDirectory && fileStore.selectedFilePath === entry.path,
+          'is-selected-folder': entry.isDirectory && fileStore.selectedFolderPath === entry.path
         }"
         @click="handleEntryClick(entry)"
       >
@@ -113,10 +98,13 @@ function handleEntryClick(entry: FileEntry) {
   background-color: var(--bg-tertiary);
   color: var(--text-primary);
 }
-.file-item.is-selected {
+.file-item.is-selected-file {
   background-color: var(--accent-color-muted);
   color: var(--text-primary);
   font-weight: 500;
+}
+.file-item.is-selected-folder {
+  background-color: var(--bg-tertiary);
 }
 .is-directory {
   color: var(--text-primary);
