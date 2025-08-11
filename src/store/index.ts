@@ -2,40 +2,33 @@ import { defineStore } from 'pinia'
 import path from 'path-browserify'
 
 export type SidebarMode = 'files' | 'personal' | 'projects' | 'areas' | 'resources' | 'archives';
+export type PersonalViewType = '今日焦點' | '任務清單' | '未來日誌'; // 定義個人視圖的類型
 
 export const useMainStore = defineStore('main', {
   state: () => ({
     sidebarMode: 'files' as SidebarMode,
-    // --- 1. 新增狀態，用於記錄上一個模式 ---
-    // 目的：當我們從 'personal' 切換到 'files' 時，這裡會保存 'personal'，以便之後可以返回。
     previousSidebarMode: null as SidebarMode | null,
+    // --- 1. 新增狀態，追蹤個人儀表板中的當前活動視圖 ---
+    activePersonalView: '今日焦點' as PersonalViewType,
   }),
   getters: {},
   actions: {
-    /**
-     * 目的：設定側邊欄的顯示模式，並智能記錄切換歷史。
-     * @param mode - 要切換到的模式。
-     */
     setSidebarMode(mode: SidebarMode) {
-      // --- 2. 修改 Action 邏輯 ---
-      // 當我們要切換到 'files' 模式，且當前模式不是 'files' 時，
-      // 就把當前的模式存起來。
       if (mode === 'files' && this.sidebarMode !== 'files') {
         this.previousSidebarMode = this.sidebarMode;
       }
       this.sidebarMode = mode;
     },
-
-    /**
-     * --- 3. 新增 Action，用於返回 ---
-     * 目的：從檔案總管模式返回到上一個專題模式。
-     */
     restorePreviousSidebarMode() {
       if (this.previousSidebarMode) {
         this.sidebarMode = this.previousSidebarMode;
-        this.previousSidebarMode = null; // 返回後清除記錄
+        this.previousSidebarMode = null;
       }
-    }
+    },
+    // --- 2. 新增 Action，用於設定當前的個人視圖 ---
+    setActivePersonalView(view: PersonalViewType) {
+      this.activePersonalView = view;
+    },
   },
 })
 

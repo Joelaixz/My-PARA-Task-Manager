@@ -2,25 +2,55 @@
 :root {
   --font-family: Avenir, Helvetica, Arial, sans-serif;
   
-  /* --- 背景色 --- */
+  /* --- 基礎背景色 --- */
   --bg-primary: #1e1e1e;       /* 主要背景 (最暗) */
   --bg-secondary: #252526;     /* 次要背景 (如側邊欄、程式碼區塊) */
   --bg-tertiary: #333333;      /* 懸停/互動元素背景 */
   --bg-l1-sidebar: #2d2d2d;    /* L1 側邊欄專用色 */
 
-  /* --- 文字顏色 --- */
+  /* --- 基礎文字與邊框 --- */
   --text-primary: #d4d4d4;     /* 主要文字 */
   --text-secondary: #a0a0a0;   /* 次要/輔助文字 */
   --text-accent-contrast: #ffffff; /* 強調色上的文字 (白色) */
-
-  /* --- 邊框與分隔線 --- */
   --border-color: #3c3c3c;
   
-  /* --- 強調色 --- */
-  --accent-color: #42b983;            /* 主要品牌/強調色 (綠色) */
+  /* --- 預設強調色 --- */
+ --accent-color: #42b983;            /* 主要品牌/強調色 (綠色) */
   --accent-color-hover: #52c993;
   --accent-color-muted: rgba(66, 185, 131, 0.3); /* 選中項目的淡色背景 */
   --link-color: #559fff;             /* 超連結顏色 */
+
+  /* --- 2. 新增全新的主題情緒色系統 (供未來各區塊使用) --- */
+
+  /* 個人 (溫暖與動力) */
+  --color-personal: #FFA726; /* 主色：琥珀黃 */
+  --color-personal-hover: #FFB74D;
+  --color-personal-muted: rgba(255, 167, 38, 0.2);
+  --bg-section-personal: #4E342E; /* 區塊背景：深暖棕 */
+
+  /* 專案 (高效與創新) */
+  --color-projects: #26A69A; /* 主色：青石藍 */
+  --color-projects-hover: #4DB6AC;
+  --color-projects-muted: rgba(38, 166, 154, 0.2);
+  --bg-section-projects: #1A3C40; /* 區塊背景：深青藍 */
+
+  /* 領域 (沉靜與智慧) */
+  --color-areas: #7986CB; /* 主色：石板藍 */
+  --color-areas-hover: #9FA8DA;
+  --color-areas-muted: rgba(121, 134, 203, 0.2);
+  --bg-section-areas: #2A3A59; /* 區塊背景：深靛藍 */
+
+  /* 資源 (生長與富足) */
+  --color-resources: #66BB6A; /* 主色：森林綠 */
+  --color-resources-hover: #81C784;
+  --color-resources-muted: rgba(102, 187, 106, 0.2);
+  --bg-section-resources: #2E4630; /* 區塊背景：深松綠 */
+
+  /* 封存 (中性與安定) */
+  --color-archives: #BDBDBD; /* 主色：暖灰色 */
+  --color-archives-hover: #E0E0E0;
+  --color-archives-muted: rgba(189, 189, 189, 0.2);
+  --bg-section-archives: #424242; /* 區塊背景：深灰 */
 }
 
 /* 全域樣式重置 */

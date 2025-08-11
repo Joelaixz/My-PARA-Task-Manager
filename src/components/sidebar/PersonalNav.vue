@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router';
-import { useMainStore } from '../../store';
+import { useMainStore, type PersonalViewType } from '../../store';
 
 const mainStore = useMainStore();
 
-// --- 1. 新增 emit 定義 ---
-// 目的：讓這個元件可以通知父元件 (SidebarView) 執行收合操作。
 const emit = defineEmits(['toggle-collapse']);
 
 /**
@@ -20,6 +18,15 @@ function switchToExplorer() {
  */
 function onToggleCollapse() {
   emit('toggle-collapse');
+}
+
+// --- 1. 新增方法，用於設定當前的活動視圖 ---
+/**
+ * 目的：通知 Pinia store 當前「個人」模式下正在顯示哪個子視圖。
+ * @param viewName - 視圖的中文名稱，必須是 PersonalViewType 中定義的值。
+ */
+function setActiveView(viewName: PersonalViewType) {
+  mainStore.setActivePersonalView(viewName);
 }
 </script>
 
@@ -53,15 +60,16 @@ function onToggleCollapse() {
             :to="{ name: 'DashboardHome' }" 
             class="nav-link"
             active-class="is-active"
+            @click="setActiveView('今日焦點')"
           >
             今日焦點
           </RouterLink>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link">任務清單</a>
+          <a href="#" class="nav-link" @click.prevent="setActiveView('任務清單')">任務清單</a>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link">未來日誌</a>
+          <a href="#" class="nav-link" @click.prevent="setActiveView('未來日誌')">未來日誌</a>
         </li>
       </ul>
     </div>
@@ -69,6 +77,7 @@ function onToggleCollapse() {
 </template>
 
 <style scoped>
+/* 樣式保持不變 */
 .personal-nav-container {
   display: flex;
   flex-direction: column;
@@ -76,15 +85,14 @@ function onToggleCollapse() {
   overflow: hidden;
 }
 
-/* --- 2. 更新 Header 樣式為垂直佈局 --- */
 .personal-header {
   padding: 0.5rem 1rem;
   min-height: 60px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
-  flex-direction: column; /* 改為垂直 */
+  flex-direction: column;
   justify-content: center;
-  gap: 0.5rem; /* 標題和按鈕的間距 */
+  gap: 0.5rem;
 }
 
 .header-title-wrapper {
@@ -92,7 +100,7 @@ function onToggleCollapse() {
   align-items: center;
   overflow: hidden;
   color: var(--text-primary);
-  width: 100%; /* 佔滿寬度 */
+  width: 100%;
 }
 
 .header-icon {
@@ -134,11 +142,10 @@ function onToggleCollapse() {
 }
 
 .header-actions .collapse-button {
-  margin-left: auto; /* 將收合按鈕推到最右邊 */
+  margin-left: auto;
   margin-right: 0;
 }
 
-/* 導覽列表樣式 (保持不變) */
 .nav-list-container {
   padding: 0.5rem;
   overflow-y: auto;
