@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { defineProps } from 'vue'
 import path from 'path-browserify'
-import { useFileStore } from '../store'
+import { useFileStore } from '../../store'
 
 interface FileEntry {
   name: string;

@@ -3,9 +3,9 @@ import { ref, computed, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 // `path-browserify` 仍然需要，用於選中檔案時取得父目錄路徑
 import path from 'path-browserify'
-import FileTree from '../components/FileTree.vue'
-import SidebarHeader from '../components/SidebarHeader.vue'
-import InputDialog from '../components/InputDialog.vue'
+import FileTree from '../components/sidebar/FileTree.vue'
+import SidebarHeader from '../components/sidebar/SidebarHeader.vue'
+import InputDialog from '../components/sidebar/InputDialog.vue'
 import { useFileStore } from '../store'
 
 const router = useRouter()
