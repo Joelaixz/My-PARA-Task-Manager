@@ -1,6 +1,43 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
+import { watch } from 'vue';
+import { useRoute } from 'vue-router';
 import SidebarView from './SidebarView.vue'
+import { useMainStore, type SidebarMode } from '../store';
+
+const mainStore = useMainStore();
+const route = useRoute();
+
+/**
+ * 目的：根據路由路徑決定側邊欄應該處於何種模式。
+ * @param newPath - 新的路由路徑字串。
+ */
+function updateSidebarMode(newPath: string) {
+  let mode: SidebarMode = 'files'; // 預設為檔案總管模式
+
+  // --- 1. 擴充條件判斷以支援所有模式 ---
+  if (newPath === '/') {
+    mode = 'personal';
+  } else if (newPath === '/projects') {
+    mode = 'projects'; 
+  } else if (newPath === '/areas') {
+    mode = 'areas';
+  } else if (newPath === '/resources') {
+    mode = 'resources';
+  } else if (newPath === '/archives') {
+    mode = 'archives';
+  }
+  // 備註：當路徑為 /view 時，mode 會維持預設的 'files'，這是符合預期的行為。
+  
+  mainStore.setSidebarMode(mode);
+}
+
+
+// 監聽路由變化，即時更新側邊欄模式
+watch(() => route.path, (newPath) => {
+  updateSidebarMode(newPath);
+}, { immediate: true });
+
 </script>
 
 <template>
@@ -22,6 +59,7 @@ import SidebarView from './SidebarView.vue'
 </template>
 
 <style scoped>
+/* 樣式保持不變 */
 .main-layout {
   display: flex;
   height: 100vh;

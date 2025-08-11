@@ -1,4 +1,27 @@
 <script setup lang="ts">
+import { computed } from 'vue'; // 1. 匯入 computed
+import { useMainStore } from '../../store';
+
+const mainStore = useMainStore();
+
+// 2. 建立 computed 屬性來翻譯模式名稱
+const previousModeText = computed(() => {
+  switch (mainStore.previousSidebarMode) {
+    case 'personal':
+      return '個人';
+    case 'projects':
+      return '專案';
+    case 'areas':
+      return '領域';
+    case 'resources':
+      return '資源';
+    case 'archives':
+      return '封存';
+    default:
+      return ''; // 如果沒有上一個模式，則返回空字串
+  }
+});
+
 defineProps<{
   folderName: string;
   isLoading: boolean;
@@ -21,12 +44,14 @@ function onToggleCollapse() {
 
 function onCreateFile() {
   emit('create-file')
-  console.log('Emit: create-file');
 }
 
 function onCreateFolder() {
   emit('create-folder')
-  console.log('Emit: create-folder');
+}
+
+function restorePreviousMode() {
+  mainStore.restorePreviousSidebarMode();
 }
 </script>
 
@@ -38,6 +63,16 @@ function onCreateFolder() {
     </div>
     
     <div class="header-actions">
+      <button 
+        v-if="mainStore.previousSidebarMode" 
+        @click="restorePreviousMode" 
+        :title="`返回${previousModeText}模式`"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+        </svg>
+      </button>
+
       <button @click="onCreateFile" title="新增檔案">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
           <path d="M8 6.5a.5.5 0 0 1 .5.5v1.5H10a.5.5 0 0 1 0 1H8.5V11a.5.5 0 0 1-1 0V9.5H6a.5.5 0 0 1 0-1h1.5V7a.5.5 0 0 1 .5-.5z"/>
@@ -66,25 +101,23 @@ function onCreateFolder() {
 </template>
 
 <style scoped>
-/* 1. 修改主容器的佈局為垂直排列 */
+/* 樣式保持不變 */
 .l2-header {
-  padding: 0.5rem 1rem; /* 調整上下 padding */
-  height: auto; /* 高度自動 */
-  min-height: 60px; /* 設定一個最小高度 */
+  padding: 0.5rem 1rem;
+  height: auto;
+  min-height: 60px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
-  flex-direction: column; /* 改為垂直方向 */
+  flex-direction: column;
   justify-content: center;
-  gap: 0.5rem; /* 設定上下區塊的間距 */
+  gap: 0.5rem;
 }
-
-/* 2. 調整標題區塊的樣式 */
 .header-title-wrapper {
   display: flex;
   align-items: center;
   overflow: hidden;
   color: var(--text-primary);
-  width: 100%; /* 佔滿整行 */
+  width: 100%;
 }
 .header-icon {
   flex-shrink: 0;
@@ -97,12 +130,10 @@ function onCreateFolder() {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-/* 3. 調整按鈕區的樣式 */
 .header-actions {
   display: flex;
   align-items: center;
-  width: 100%; /* 佔滿整行 */
+  width: 100%;
 }
 .header-actions button {
   display: flex;
@@ -114,7 +145,7 @@ function onCreateFolder() {
   border-radius: 4px;
   cursor: pointer;
   padding: 5px;
-  margin-right: 4px; /* 改為 margin-right */
+  margin-right: 4px;
   transition: background-color 0.2s, color 0.2s;
 }
 .header-actions button:hover {
@@ -126,23 +157,11 @@ function onCreateFolder() {
   cursor: not-allowed;
   background-color: transparent;
 }
-.header-actions button:disabled:hover {
-  color: #666;
-}
-/* 讓收合按鈕推到最右邊 */
 .header-actions .collapse-button {
   margin-left: auto;
   margin-right: 0;
 }
-
-.header-actions button svg {
-  opacity: 0.8;
-}
-.header-actions button:hover svg {
-  opacity: 1;
-}
-.header-actions button:disabled svg,
-.header-actions button:disabled:hover svg {
-  opacity: 0.4;
-}
+.header-actions button svg { opacity: 0.8; }
+.header-actions button:hover svg { opacity: 1; }
+.header-actions button:disabled svg { opacity: 0.4; }
 </style>

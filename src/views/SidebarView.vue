@@ -1,36 +1,18 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
-// `path-browserify` 仍然需要，用於選中檔案時取得父目錄路徑
-import path from 'path-browserify'
-import FileTree from '../components/sidebar/FileTree.vue'
-import SidebarHeader from '../components/sidebar/SidebarHeader.vue'
-import InputDialog from '../components/sidebar/InputDialog.vue'
-import { useFileStore } from '../store'
+import { ref, computed, onUnmounted } from 'vue'
+import { useMainStore } from '../store'
 
-const router = useRouter()
-const fileStore = useFileStore()
+// --- 1. 匯入所有側邊欄模式對應的子元件 ---
+import FileExplorer from '../components/sidebar/FileExplorer.vue'
+import PersonalNav from '../components/sidebar/PersonalNav.vue'
+import ProjectsNav from '../components/sidebar/ProjectsNav.vue'
+import AreasNav from '../components/sidebar/AreasNav.vue'
+import ResourcesNav from '../components/sidebar/ResourcesNav.vue'
+import ArchivesNav from '../components/sidebar/ArchivesNav.vue'
 
-interface FileEntry {
-  name: string;
-  path: string;
-  isDirectory: boolean;
-  children?: FileEntry[];
-  isExpanded?: boolean; // 這個屬性已不再被使用，但為了型別相容性暫時保留
-}
+const mainStore = useMainStore();
 
-const isDialogVisible = ref(false)
-const dialogTitle = ref('')
-const showExtensionDialog = ref(false)
-const fileExtensions = ref(['.md', '.txt'])
-const creationType = ref<'file' | 'folder' | null>(null);
-const currentCreateFunction = ref<(parentDir: string, name: string, rootPath: string) => Promise<{ newPath: string; files: FileEntry[] } | null>>()
-
-
-const fileList = ref<FileEntry[]>([])
-const selectedFolderName = ref('檔案總管')
-const rootPath = ref<string | null>(null)
-const isLoading = ref(false)
+// 容器本身的邏輯 (收合/展開/調整寬度) 保持不變
 const isCollapsed = ref(false)
 const sidebarWidth = ref(240)
 const isResizing = ref(false)
@@ -69,116 +51,6 @@ const sidebarStyle = computed(() => ({
   overflow: 'hidden'
 }))
 
-// --- 1. 移除 `getExpandedPaths` 和 `processTreeData` 函式 ---
-// 說明：這些管理展開狀態的邏輯現在已經被 Pinia Store 取代。
-
-async function handleLoadFiles(directoryPath?: string) {
-  isLoading.value = true
-  if (!directoryPath) {
-    fileList.value = []
-    rootPath.value = null
-  }
-  
-  // --- 2. 修改：在載入新目錄前，先清除 Store 中的舊展開狀態 ---
-  fileStore.collapseAllFolders();
-
-  try {
-    const result = await window.ipcRenderer.getFiles(directoryPath)
-    if (result) {
-      // --- 3. 修改：直接賦值，不再需要 processTreeData 進行處理 ---
-      fileList.value = result.files;
-      selectedFolderName.value = result.folderName;
-      rootPath.value = result.rootPath;
-
-      if (!directoryPath) {
-         fileStore.selectFolder(rootPath.value);
-         // 預設將根目錄設為展開
-         fileStore.toggleFolderExpansion(rootPath.value);
-      }
-    } else if (!directoryPath) {
-      selectedFolderName.value = '檔案總管';
-      fileList.value = [];
-      rootPath.value = null;
-    }
-  } catch (error) {
-    console.error('Failed to get files from main process:', error)
-    selectedFolderName.value = '檔案總管'
-  } finally {
-    isLoading.value = false
-  }
-}
-
-function triggerCreateNewItem(type: 'file' | 'folder') {
-  if (!rootPath.value) {
-    alert('請先選擇一個根資料夾。');
-    return;
-  }
-
-  creationType.value = type;
-
-  if (type === 'file') {
-    dialogTitle.value = '建立新檔案';
-    showExtensionDialog.value = true;
-    currentCreateFunction.value = window.ipcRenderer.createFile;
-  } else {
-    dialogTitle.value = '建立新資料夾';
-    showExtensionDialog.value = false;
-    currentCreateFunction.value = window.ipcRenderer.createFolder;
-  }
-
-  isDialogVisible.value = true;
-}
-
-async function handleDialogConfirm(newItemName: string) {
-  if (!newItemName || !currentCreateFunction.value || !rootPath.value) {
-    return;
-  }
-
-  const parentDir = fileStore.selectedFolderPath || rootPath.value;
-
-  if (!parentDir) {
-    alert('無法確定建立位置，請先選擇一個資料夾。');
-    return;
-  }
-
-  // --- 4. 移除：不再需要手動保存展開狀態 ---
-  isLoading.value = true;
-  try {
-    const result = await currentCreateFunction.value(parentDir, newItemName, rootPath.value);
-
-    if (result) {
-      // --- 5. 修改：直接用新的檔案列表更新，並呼叫 store action 來處理展開 ---
-      fileList.value = result.files;
-      fileStore.ensurePathIsExpanded(result.newPath);
-
-      await nextTick();
-
-      if (creationType.value === 'file') {
-        fileStore.setPendingEdit();
-        fileStore.selectFile(result.newPath);
-      } else if (creationType.value === 'folder') {
-        fileStore.selectFolder(result.newPath);
-      }
-    } else {
-      alert(`建立失敗，可能是名稱重複、無效或權限不足。`);
-    }
-  } catch (error) {
-    console.error(`Error creating item:`, error);
-    alert(`建立時發生錯誤。`);
-  } finally {
-    isLoading.value = false;
-    currentCreateFunction.value = undefined;
-    creationType.value = null;
-  }
-}
-
-
-watch(() => fileStore.selectedFilePath, (newPath) => {
-  if (newPath && router.currentRoute.value.path !== '/view') {
-    router.push('/view')
-  }
-})
-
 onUnmounted(() => {
   window.removeEventListener('mousemove', handleResizing)
   window.removeEventListener('mouseup', stopResize)
@@ -194,37 +66,35 @@ onUnmounted(() => {
     <aside class="l2-sidebar" :style="sidebarStyle">
       <div v-if="!isCollapsed" class="sidebar-content">
 
-        <SidebarHeader
-          :folder-name="selectedFolderName"
-          :is-loading="isLoading"
-          @load-files="handleLoadFiles()"
+        <FileExplorer
+          v-if="mainStore.sidebarMode === 'files'"
+          @toggle-collapse="toggleCollapse" 
+        />
+        <PersonalNav 
+          v-else-if="mainStore.sidebarMode === 'personal'" 
           @toggle-collapse="toggleCollapse"
-          @create-file="triggerCreateNewItem('file')"
-          @create-folder="triggerCreateNewItem('folder')"
+        />
+        <ProjectsNav
+          v-else-if="mainStore.sidebarMode === 'projects'"
+          @toggle-collapse="toggleCollapse"
+        />
+        <AreasNav
+          v-else-if="mainStore.sidebarMode === 'areas'"
+          @toggle-collapse="toggleCollapse"
+        />
+        <ResourcesNav
+          v-else-if="mainStore.sidebarMode === 'resources'"
+          @toggle-collapse="toggleCollapse"
+        />
+        <ArchivesNav
+          v-else-if="mainStore.sidebarMode === 'archives'"
+          @toggle-collapse="toggleCollapse"
         />
 
-        <div class="file-list-container">
-          <div v-if="isLoading" class="feedback-message">讀取中...</div>
-          <div v-else-if="fileList.length === 0" class="feedback-message">
-            點擊 ↻ 圖示選擇資料夾
-          </div>
-          <FileTree
-            v-else
-            :entries="fileList"
-          />
-        </div>
       </div>
     </aside>
 
     <div v-if="!isCollapsed" @mousedown="startResize" class="resizer"></div>
-
-    <InputDialog
-      v-model="isDialogVisible"
-      :title="dialogTitle"
-      :show-extension-select="showExtensionDialog"
-      :extensions="fileExtensions"
-      @confirm="handleDialogConfirm"
-    />
   </div>
 </template>
 
@@ -270,17 +140,6 @@ onUnmounted(() => {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-}
-.file-list-container {
-  padding: 0.5rem;
-  overflow-y: auto;
-  flex-grow: 1;
-}
-.feedback-message {
-  padding: 1rem;
-  color: var(--text-secondary);
-  font-size: 14px;
-  text-align: center;
 }
 .resizer {
   width: 5px;
