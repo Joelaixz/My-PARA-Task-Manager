@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import PersonalView from '../views/PersonalView.vue'
 import FileView from '../views/FileView.vue'
 
-// --- 1. 匯入我們為子路由建立的預設元件 ---
 import DashboardHome from '../components/personal/DashboardHome.vue'
 
 const routes = [
@@ -10,20 +9,19 @@ const routes = [
     path: '/',
     name: 'Personal',
     component: PersonalView,
-    // --- 2. 新增 children 屬性以定義子路由 ---
-    // 目的：讓 PersonalView 內部可以透過 <RouterView /> 來渲染不同的內容面板。
     children: [
       {
-        path: '', // 當父路徑為 / 時，預設載入此子路由
+        path: '',
         name: 'DashboardHome',
         component: DashboardHome,
       },
-      // 之後可以擴充其他子路由，例如：
-      // {
-      //   path: 'tasks',
-      //   name: 'Tasks',
-      //   component: () => import('../components/personal/TodoList.vue')
-      // }
+      // --- 1. 新增「任務清單」的子路由 ---
+      {
+        path: 'tasks', // 當使用者訪問 /tasks 時
+        name: 'TaskList',
+        // 使用動態載入 (lazy-loading) 來提升效能
+        component: () => import('../components/personal/TaskListView.vue')
+      }
     ]
   },
   {

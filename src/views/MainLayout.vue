@@ -9,33 +9,38 @@ const mainStore = useMainStore();
 const route = useRoute();
 
 /**
- * 目的：根據路由路徑決定側邊欄應該處於何種模式。
- * @param newPath - 新的路由路徑字串。
+ * 目的：根據路由的頂層路由名稱，決定側邊欄應該處於何種模式。
  */
-function updateSidebarMode(newPath: string) {
-  let mode: SidebarMode = 'files'; // 預設為檔案總管模式
+function updateSidebarMode() {
+  const topLevelRouteName = route.matched[0]?.name;
+  let mode: SidebarMode = 'files';
 
-  // --- 1. 擴充條件判斷以支援所有模式 ---
-  if (newPath === '/') {
-    mode = 'personal';
-  } else if (newPath === '/projects') {
-    mode = 'projects'; 
-  } else if (newPath === '/areas') {
-    mode = 'areas';
-  } else if (newPath === '/resources') {
-    mode = 'resources';
-  } else if (newPath === '/archives') {
-    mode = 'archives';
+  switch(topLevelRouteName) {
+    case 'Personal':
+      mode = 'personal';
+      break;
+    case 'Projects':
+      mode = 'projects';
+      break;
+    case 'Areas':
+      mode = 'areas';
+      break;
+    case 'Resources':
+      mode = 'resources';
+      break;
+    case 'Archives':
+      mode = 'archives';
+      break;
+    default:
+      mode = 'files';
   }
-  // 備註：當路徑為 /view 時，mode 會維持預設的 'files'，這是符合預期的行為。
   
   mainStore.setSidebarMode(mode);
 }
 
-
 // 監聽路由變化，即時更新側邊欄模式
-watch(() => route.path, (newPath) => {
-  updateSidebarMode(newPath);
+watch(() => route.name, () => {
+  updateSidebarMode();
 }, { immediate: true });
 
 </script>
@@ -59,7 +64,6 @@ watch(() => route.path, (newPath) => {
 </template>
 
 <style scoped>
-/* 樣式保持不變 */
 .main-layout {
   display: flex;
   height: 100vh;
@@ -96,7 +100,9 @@ watch(() => route.path, (newPath) => {
   color: var(--text-primary);
 }
 
-.l1-sidebar a.router-link-exact-active {
+/* --- 1. 修正 CSS 選擇器 --- */
+/* 從 .router-link-exact-active 改為 .router-link-active */
+.l1-sidebar a.router-link-active {
   background-color: var(--accent-color);
   color: var(--text-accent-contrast);
 }

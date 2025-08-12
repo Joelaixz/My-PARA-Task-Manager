@@ -6,25 +6,14 @@ const mainStore = useMainStore();
 
 const emit = defineEmits(['toggle-collapse']);
 
-/**
- * 目的：處理「切換至檔案總管」按鈕的點擊事件。
- */
 function switchToExplorer() {
   mainStore.setSidebarMode('files');
 }
 
-/**
- * 目的：向上傳遞收合側欄的請求。
- */
 function onToggleCollapse() {
   emit('toggle-collapse');
 }
 
-// --- 1. 新增方法，用於設定當前的活動視圖 ---
-/**
- * 目的：通知 Pinia store 當前「個人」模式下正在顯示哪個子視圖。
- * @param viewName - 視圖的中文名稱，必須是 PersonalViewType 中定義的值。
- */
 function setActiveView(viewName: PersonalViewType) {
   mainStore.setActivePersonalView(viewName);
 }
@@ -59,17 +48,31 @@ function setActiveView(viewName: PersonalViewType) {
           <RouterLink 
             :to="{ name: 'DashboardHome' }" 
             class="nav-link"
-            active-class="is-active"
+            :class="{ 'is-active': mainStore.activePersonalView === '今日焦點' }"
             @click="setActiveView('今日焦點')"
           >
             今日焦點
           </RouterLink>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" @click.prevent="setActiveView('任務清單')">任務清單</a>
+          <RouterLink 
+            :to="{ name: 'TaskList' }" 
+            class="nav-link"
+            :class="{ 'is-active': mainStore.activePersonalView === '任務清單' }"
+            @click="setActiveView('任務清單')"
+          >
+            任務清單
+          </RouterLink>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" @click.prevent="setActiveView('未來日誌')">未來日誌</a>
+          <a 
+            href="#" 
+            class="nav-link" 
+            :class="{ 'is-active': mainStore.activePersonalView === '未來日誌' }"
+            @click.prevent="setActiveView('未來日誌')"
+          >
+            未來日誌
+          </a>
         </li>
       </ul>
     </div>
