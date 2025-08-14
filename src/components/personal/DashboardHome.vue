@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-// --- 1. 匯入新的 FocusCard 元件 ---
+// --- 1. 匯入 FocusCard 和新的 ScratchpadCard 元件 ---
 import FocusCard from './dashboard/FocusCard.vue';
+import ScratchpadCard from './dashboard/ScratchpadCard.vue';
 
 // --- 模擬資料 (Mock Data) ---
 const todayTasks = ref([
@@ -21,9 +22,8 @@ const futureReminder = ref({
   event: '參加技術分享會',
 });
 
-// --- 2. 移除舊的 mainFocus 假資料 ---
-// const mainFocus = ref('完成 WelcomeHeader 的最終設計稿，並交付給開發團隊。');
-const scratchpadContent = ref('');
+// --- 2. 移除舊的 scratchpadContent 假資料 ---
+// const scratchpadContent = ref('');
 
 // --- 倒數計時器邏輯 ---
 const countdownDisplay = ref('');
@@ -85,18 +85,12 @@ onUnmounted(() => {
       <a href="#" class="view-all-link">查看完整清單...</a>
     </div>
 
-    <div class="board-note scratchpad-card">
-       <h2 class="note-title">✍️ 隨手筆記</h2>
-       <div class="textarea-wrapper">
-         <textarea v-model="scratchpadContent" placeholder="隨時記錄靈感..."></textarea>
-       </div>
-    </div>
+    <ScratchpadCard />
 
   </div>
 </template>
 
 <style scoped>
-/* --- 4. 移除舊的 focus-card 和 focus-text 樣式，因為它們已經被移到 FocusCard.vue 中 --- */
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
@@ -122,9 +116,13 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-/* 首要目標卡片 Grid 佈局 */
-.focus-card,
-:deep(.focus-card) { /* 使用 :deep() 確保能選中子元件的根元素 */
+/* --- 4. 移除舊的 scratchpad-card 相關樣式 --- */
+
+/* Grid 佈局設定 */
+:deep(.focus-card) {
+  grid-column: span 6;
+}
+:deep(.scratchpad-card) {
   grid-column: span 6;
 }
 
@@ -196,34 +194,11 @@ onUnmounted(() => {
 }
 .view-all-link:hover { text-decoration: underline; }
 
-/* 隨手筆記卡片 */
-.scratchpad-card {
-  grid-column: span 6;
-  border-left: 4px solid var(--color-archives);
-}
-.textarea-wrapper {
-  flex-grow: 1;
-  display: flex;
-}
-.scratchpad-card textarea {
-  width: 100%;
-  flex-grow: 1;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  color: var(--text-primary);
-  padding: 0.75rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  resize: none;
-}
-.scratchpad-card textarea:focus {
-  outline: none;
-  border-color: var(--color-archives);
-}
-
-.focus-card, .countdown-card, .reminder-card,
-:deep(.focus-card) {
+/* 確保所有卡片都有最小高度 */
+:deep(.focus-card),
+:deep(.scratchpad-card),
+.countdown-card, 
+.reminder-card {
   min-height: 180px;
 }
 </style>

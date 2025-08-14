@@ -102,8 +102,6 @@ app.whenReady().then(() => {
     })
   })
 
-  // --- 3. 修改 IPC 處理程序，改為呼叫對應的服務 ---
-  
   // 檔案操作 (呼叫 fileService)
   ipcMain.handle('get-files', (event, directoryPath?: string) => fileService.getFiles(win, directoryPath))
   ipcMain.handle('read-file', (event, filePath: string) => fileService.readFile(filePath))
@@ -112,6 +110,12 @@ app.whenReady().then(() => {
   ipcMain.handle('create-folder', (event, parentDir: string, folderName: string, rootPath: string) => fileService.createFolder(parentDir, folderName, rootPath))
   
   // 資料庫操作 (呼叫 databaseService)
+  // -- Key-Value
   ipcMain.handle('get-mit', () => databaseService.getValue(db, 'mit'))
   ipcMain.handle('set-mit', (event, content: string) => databaseService.setValue(db, 'mit', content))
+  // -- Scratchpad Notes (新增)
+  ipcMain.handle('get-scratchpad-notes', () => databaseService.getAllScratchpadNotes(db))
+  ipcMain.handle('add-scratchpad-note', (event, content: string) => databaseService.addScratchpadNote(db, content))
+  ipcMain.handle('update-scratchpad-note', (event, id: number, content: string) => databaseService.updateScratchpadNote(db, id, content))
+  ipcMain.handle('delete-scratchpad-note', (event, id: number) => databaseService.deleteScratchpadNote(db, id))
 })

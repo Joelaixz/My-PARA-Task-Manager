@@ -20,12 +20,18 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   
   // 檔案操作
   getFiles: (directoryPath?: string): Promise<any> => ipcRenderer.invoke('get-files', directoryPath),
-  readFile: (filePath: string): Promise<string | null> => ipcRenderer.invoke('read-file', filePath),
+  readFile: (filePath: string): Promise<any> => ipcRenderer.invoke('read-file', filePath),
   saveFile: (filePath: string, content: string): Promise<boolean> => ipcRenderer.invoke('save-file', filePath, content),
   createFile: (parentDir: string, fileName: string, rootPath: string): Promise<any> => ipcRenderer.invoke('create-file', parentDir, fileName, rootPath),
   createFolder: (parentDir: string, folderName: string, rootPath: string): Promise<any> => ipcRenderer.invoke('create-folder', parentDir, folderName, rootPath),
 
-  // --- 新增：資料庫操作 ---
+  // Key-Value
   getMit: (): Promise<string | null> => ipcRenderer.invoke('get-mit'),
   setMit: (content: string): Promise<void> => ipcRenderer.invoke('set-mit', content),
+
+  // Scratchpad Notes (新增)
+  getScratchpadNotes: (): Promise<any[]> => ipcRenderer.invoke('get-scratchpad-notes'),
+  addScratchpadNote: (content: string): Promise<any> => ipcRenderer.invoke('add-scratchpad-note', content),
+  updateScratchpadNote: (id: number, content: string): Promise<any> => ipcRenderer.invoke('update-scratchpad-note', id, content),
+  deleteScratchpadNote: (id: number): Promise<boolean> => ipcRenderer.invoke('delete-scratchpad-note', id),
 })
