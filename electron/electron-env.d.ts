@@ -26,15 +26,15 @@ interface Window {
     send(...args: Parameters<import('electron').IpcRenderer['send']>): void
     invoke(...args: Parameters<import('electron').IpcRenderer['invoke']>): Promise<any>
     
-    // --- 2. 同步修改 getFiles 的型別定義，加入可選的路徑參數 ---
+    // 檔案操作
     getFiles(directoryPath?: string): Promise<{ folderName: string; files: FileEntry[]; rootPath: string } | null>
-    
     readFile(filePath: string): Promise<ReadFileResult | null>
-
     saveFile(filePath: string, content: string): Promise<boolean>
-
     createFile(parentDir: string, fileName: string, rootPath: string): Promise<{ newPath: string; files: FileEntry[] } | null>
-
     createFolder(parentDir: string, folderName: string, rootPath: string): Promise<{ newPath: string; files: FileEntry[] } | null>
+
+    // --- 新增：資料庫操作的型別定義 ---
+    getMit(): Promise<string | null>
+    setMit(content: string): Promise<void>
   }
 }

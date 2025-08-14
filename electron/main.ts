@@ -1,11 +1,14 @@
-import { app, BrowserWindow, ipcMain, dialog, session, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import fs from 'node:fs/promises'
-import isBinaryPath from 'is-binary-path'
+import knex, { type Knex } from 'knex'
+import { databaseService } from './databaseService'
+import { fileService } from './fileService'
 
 const require = createRequire(import.meta.url)
+const knexConfig: { [key: string]: Knex.Config } = require('../knexfile.cjs');
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 process.env.APP_ROOT = path.join(__dirname, '..')
@@ -16,162 +19,18 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
+const dbPath = app.isPackaged 
+  ? path.join(app.getPath('userData'), 'app-data.db') 
+  : path.resolve(process.env.APP_ROOT, 'app-data.db');
+
+const db = knex({
+  ...knexConfig.development,
+  connection: {
+    filename: dbPath
+  }
+});
+
 let win: BrowserWindow | null
-
-interface FileEntry {
-  name: string;
-  path: string;
-  isDirectory: boolean;
-  children?: FileEntry[];
-}
-interface ReadFileResult {
-  content: string;
-  isBinary: boolean;
-  mimeType?: string;
-}
-const ALLOWED_EXTENSIONS = ['.md', '.txt', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.pdf'];
-const MAX_RECURSION_DEPTH = 5;
-async function readDirectoryRecursively(dirPath: string, currentDepth = 0): Promise<FileEntry[]> {
-  if (currentDepth >= MAX_RECURSION_DEPTH) {
-    return [];
-  }
-  const entries = await fs.readdir(dirPath, { withFileTypes: true });
-  const files: FileEntry[] = [];
-  for (const entry of entries) {
-    const fullPath = path.join(dirPath, entry.name);
-    if (entry.name === '.git' || entry.name === 'node_modules' || entry.name.startsWith('.')) {
-      continue;
-    }
-    if (entry.isDirectory()) {
-      files.push({
-        name: entry.name,
-        path: fullPath,
-        isDirectory: true,
-        children: await readDirectoryRecursively(fullPath, currentDepth + 1)
-      });
-    } else {
-      const fileExtension = path.extname(entry.name).toLowerCase();
-      if (ALLOWED_EXTENSIONS.includes(fileExtension)) {
-        files.push({
-          name: entry.name,
-          path: fullPath,
-          isDirectory: false
-        });
-      }
-    }
-  }
-  return files.sort((a, b) => {
-    if (a.isDirectory && !b.isDirectory) return -1;
-    if (!a.isDirectory && b.isDirectory) return 1;
-    return a.name.localeCompare(b.name);
-  });
-}
-
-async function handleGetFiles(event: Electron.IpcMainInvokeEvent, directoryPath?: string) {
-  let selectedPath = directoryPath;
-
-  if (!selectedPath) {
-    if (!win) return null;
-    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-      properties: ['openDirectory']
-    });
-    if (canceled || filePaths.length === 0) {
-      return null;
-    }
-    selectedPath = filePaths[0];
-  }
-
-  if (!selectedPath) return null;
-
-  const folderName = path.basename(selectedPath);
-  try {
-    const files = await readDirectoryRecursively(selectedPath);
-    return { folderName, files, rootPath: selectedPath };
-  } catch (error) {
-    console.error(`Error reading directory: ${selectedPath}`, error);
-    return null;
-  }
-}
-
-// --- 1. 修改 handleReadFile 函式邏輯 ---
-async function handleReadFile(event: Electron.IpcMainInvokeEvent, filePath: string): Promise<ReadFileResult | null> {
-  try {
-    const extension = path.extname(filePath).toLowerCase();
-
-    // 定義哪些副檔名應被視為二進位檔或需要 Base64 編碼的檔案
-    const binaryMimeTypes: { [key: string]: string } = {
-      '.png': 'image/png',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.gif': 'image/gif',
-      '.pdf': 'application/pdf',
-      // --- 2. 新增 SVG 的處理規則 ---
-      // 目的：將 .svg 檔明確指定為圖片類型，並強制進行 Base64 編碼。
-      '.svg': 'image/svg+xml', 
-    };
-
-    // --- 3. 調整判斷條件 ---
-    // 目的：只要檔案副檔名存在於 binaryMimeTypes 中，就執行二進位/Base64 處理流程。
-    if (binaryMimeTypes[extension] || isBinaryPath(filePath)) {
-      const buffer = await fs.readFile(filePath);
-      const content = buffer.toString('base64');
-      return {
-        content,
-        isBinary: true,
-        // 如果 mimeType 未定義 (例如 isBinaryPath 判斷為 true 但不在我們的列表中)，提供一個預設值
-        mimeType: binaryMimeTypes[extension] || 'application/octet-stream',
-      };
-    } else {
-      // 保持對純文字檔的處理不變
-      const content = await fs.readFile(filePath, 'utf-8');
-      return { content, isBinary: false };
-    }
-  } catch (error) {
-    console.error(`Error reading file: ${filePath}`, error);
-    return null;
-  }
-}
-
-async function handleFileSave(event: Electron.IpcMainInvokeEvent, filePath: string, content: string): Promise<boolean> {
-  try {
-    await fs.writeFile(filePath, content, 'utf-8');
-    return true;
-  } catch (error) {
-    console.error(`Error saving file: ${filePath}`, error);
-    return false;
-  }
-}
-
-async function handleCreateFile(event: Electron.IpcMainInvokeEvent, parentDir: string, fileName: string, rootPath: string) {
-  if (!fileName || fileName.includes('/') || fileName.includes('\\') || !rootPath) {
-    return null;
-  }
-  const fullPath = path.join(parentDir, fileName);
-  try {
-    await fs.writeFile(fullPath, '', { flag: 'wx' });
-    const updatedFiles = await readDirectoryRecursively(rootPath);
-    return { newPath: fullPath, files: updatedFiles };
-  } catch (error) {
-    console.error(`Error creating file: ${fullPath}`, error);
-    return null;
-  }
-}
-
-async function handleCreateFolder(event: Electron.IpcMainInvokeEvent, parentDir: string, folderName: string, rootPath: string) {
-  if (!folderName || folderName.includes('/') || folderName.includes('\\') || !rootPath) {
-    return null;
-  }
-  const fullPath = path.join(parentDir, folderName);
-  try {
-    await fs.mkdir(fullPath, { recursive: false });
-    const updatedFiles = await readDirectoryRecursively(rootPath);
-    return { newPath: fullPath, files: updatedFiles };
-  } catch (error) {
-    console.error(`Error creating folder: ${fullPath}`, error);
-    return null;
-  }
-}
-
 
 function createWindow() {
   win = new BrowserWindow({
@@ -223,6 +82,17 @@ app.on('activate', () => {
 })
 
 app.whenReady().then(() => {
+  console.log(`Database path at: ${dbPath}`);
+  db.migrate.latest()
+    .then(() => {
+      console.log('Database migration completed successfully.');
+      createWindow()
+    })
+    .catch((error) => {
+      console.error('Database migration failed:', error);
+      app.quit();
+    });
+
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
@@ -232,12 +102,16 @@ app.whenReady().then(() => {
     })
   })
 
-  ipcMain.handle('get-files', handleGetFiles)
-  ipcMain.handle('read-file', handleReadFile)
-  ipcMain.handle('save-file', handleFileSave)
-
-  ipcMain.handle('create-file', handleCreateFile)
-  ipcMain.handle('create-folder', handleCreateFolder)
+  // --- 3. 修改 IPC 處理程序，改為呼叫對應的服務 ---
   
-  createWindow()
+  // 檔案操作 (呼叫 fileService)
+  ipcMain.handle('get-files', (event, directoryPath?: string) => fileService.getFiles(win, directoryPath))
+  ipcMain.handle('read-file', (event, filePath: string) => fileService.readFile(filePath))
+  ipcMain.handle('save-file', (event, filePath: string, content: string) => fileService.saveFile(filePath, content))
+  ipcMain.handle('create-file', (event, parentDir: string, fileName: string, rootPath: string) => fileService.createFile(parentDir, fileName, rootPath))
+  ipcMain.handle('create-folder', (event, parentDir: string, folderName: string, rootPath: string) => fileService.createFolder(parentDir, folderName, rootPath))
+  
+  // 資料庫操作 (呼叫 databaseService)
+  ipcMain.handle('get-mit', () => databaseService.getValue(db, 'mit'))
+  ipcMain.handle('set-mit', (event, content: string) => databaseService.setValue(db, 'mit', content))
 })

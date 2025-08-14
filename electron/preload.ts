@@ -18,14 +18,14 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     return ipcRenderer.invoke(channel, ...omit)
   },
   
-  // --- 1. 修改 getFiles，使其可以傳遞一個可選的路徑參數 ---
+  // 檔案操作
   getFiles: (directoryPath?: string): Promise<any> => ipcRenderer.invoke('get-files', directoryPath),
-  
   readFile: (filePath: string): Promise<string | null> => ipcRenderer.invoke('read-file', filePath),
-
   saveFile: (filePath: string, content: string): Promise<boolean> => ipcRenderer.invoke('save-file', filePath, content),
-
   createFile: (parentDir: string, fileName: string, rootPath: string): Promise<any> => ipcRenderer.invoke('create-file', parentDir, fileName, rootPath),
-
   createFolder: (parentDir: string, folderName: string, rootPath: string): Promise<any> => ipcRenderer.invoke('create-folder', parentDir, folderName, rootPath),
+
+  // --- 新增：資料庫操作 ---
+  getMit: (): Promise<string | null> => ipcRenderer.invoke('get-mit'),
+  setMit: (content: string): Promise<void> => ipcRenderer.invoke('set-mit', content),
 })

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
+// --- 1. 匯入新的 FocusCard 元件 ---
+import FocusCard from './dashboard/FocusCard.vue';
 
 // --- 模擬資料 (Mock Data) ---
 const todayTasks = ref([
@@ -19,7 +21,8 @@ const futureReminder = ref({
   event: '參加技術分享會',
 });
 
-const mainFocus = ref('完成 WelcomeHeader 的最終設計稿，並交付給開發團隊。');
+// --- 2. 移除舊的 mainFocus 假資料 ---
+// const mainFocus = ref('完成 WelcomeHeader 的最終設計稿，並交付給開發團隊。');
 const scratchpadContent = ref('');
 
 // --- 倒數計時器邏輯 ---
@@ -57,10 +60,7 @@ onUnmounted(() => {
 <template>
   <div class="dashboard-grid">
     
-    <div class="board-note focus-card">
-      <h2 class="note-title">📌 今日首要目標 (MIT)</h2>
-      <p class="focus-text">{{ mainFocus }}</p>
-    </div>
+    <FocusCard />
 
     <div class="board-note countdown-card">
       <h2 class="note-title">🔥 最急迫事項</h2>
@@ -96,15 +96,13 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* --- 1. 全新的固定網格佈局 --- */
+/* --- 4. 移除舊的 focus-card 和 focus-text 樣式，因為它們已經被移到 FocusCard.vue 中 --- */
 .dashboard-grid {
   display: grid;
-  /* 建立一個 12 欄位的網格系統 */
   grid-template-columns: repeat(12, 1fr);
   gap: 1.5rem;
 }
 
-/* --- 2. 統一卡片樣式 --- */
 .board-note {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
@@ -121,27 +119,19 @@ onUnmounted(() => {
   margin: 0 0 1rem 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  flex-shrink: 0; /* 防止標題被壓縮 */
+  flex-shrink: 0;
 }
 
-/* --- 3. 卡片佈局與裝飾 --- */
-
-/* 首要目標卡片：佔據 6/12 欄位 */
-.focus-card {
+/* 首要目標卡片 Grid 佈局 */
+.focus-card,
+:deep(.focus-card) { /* 使用 :deep() 確保能選中子元件的根元素 */
   grid-column: span 6;
-  border-left: 4px solid var(--color-personal);
-}
-.focus-text {
-  font-size: 1.1rem;
-  color: var(--text-primary);
-  line-height: 1.6;
-  margin: 0;
 }
 
-/* 倒數計時卡片：佔據 3/12 欄位 */
+/* 倒數計時卡片 */
 .countdown-card {
   grid-column: span 3;
-  border-left: 4px solid var(--color-projects); /* 使用專案主題色 */
+  border-left: 4px solid var(--color-projects);
 }
 .countdown-title {
   font-size: 1rem;
@@ -150,17 +140,17 @@ onUnmounted(() => {
   margin: 0 0 0.75rem 0;
 }
 .countdown-timer {
-  font-size: 1.8rem; /* 微調大小 */
+  font-size: 1.8rem;
   font-weight: 700;
   color: var(--color-projects);
   letter-spacing: 1px;
-  margin-top: auto; /* 將計時器推到底部 */
+  margin-top: auto;
 }
 
-/* 提醒卡片：佔據 3/12 欄位 */
+/* 提醒卡片 */
 .reminder-card {
   grid-column: span 3;
-  border-left: 4px solid var(--color-areas); /* 使用領域主題色 */
+  border-left: 4px solid var(--color-areas);
 }
 .reminder-date {
   font-size: 1.25rem;
@@ -172,13 +162,13 @@ onUnmounted(() => {
   font-size: 0.9rem;
   color: var(--text-primary);
   margin: 0;
-  margin-top: auto; /* 將事件推到底部 */
+  margin-top: auto;
 }
 
-/* 任務列表卡片：佔據 6/12 欄位 */
+/* 任務列表卡片 */
 .tasks-card {
   grid-column: span 6;
-  border-left: 4px solid var(--color-resources); /* 使用資源主題色 */
+  border-left: 4px solid var(--color-resources);
 }
 .task-list {
   list-style: none;
@@ -202,23 +192,22 @@ onUnmounted(() => {
   font-size: 0.8rem;
   color: var(--link-color);
   text-decoration: none;
-  margin-top: auto; /* 將連結推到底部 */
+  margin-top: auto;
 }
 .view-all-link:hover { text-decoration: underline; }
 
-/* 隨手筆記卡片：佔據 6/12 欄位 */
+/* 隨手筆記卡片 */
 .scratchpad-card {
   grid-column: span 6;
-  border-left: 4px solid var(--color-archives); /* 使用封存主題色 */
+  border-left: 4px solid var(--color-archives);
 }
-/* 4. 修正 Textarea 間距 */
 .textarea-wrapper {
-  flex-grow: 1; /* 讓 wrapper 填滿剩餘空間 */
+  flex-grow: 1;
   display: flex;
 }
 .scratchpad-card textarea {
   width: 100%;
-  flex-grow: 1; /* 讓 textarea 填滿 wrapper */
+  flex-grow: 1;
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 4px;
@@ -226,15 +215,15 @@ onUnmounted(() => {
   padding: 0.75rem;
   font-family: inherit;
   font-size: 0.9rem;
-  resize: none; /* 通常儀表板的便利貼不需要調整大小 */
+  resize: none;
 }
 .scratchpad-card textarea:focus {
   outline: none;
   border-color: var(--color-archives);
 }
 
-/* --- 5. 統一部分卡片的高度 --- */
-.focus-card, .countdown-card, .reminder-card {
-  min-height: 180px; /* 設定一個最小且一致的高度 */
+.focus-card, .countdown-card, .reminder-card,
+:deep(.focus-card) {
+  min-height: 180px;
 }
 </style>
