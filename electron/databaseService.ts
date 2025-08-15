@@ -12,6 +12,15 @@ interface ScratchpadNote {
   created_at: string;
 }
 
+// 1. 新增：為 task_lists 表格的紀錄定義 TypeScript 型別
+interface TaskList {
+  id: number;
+  name: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 
 // --- Key-Value 儲存相關 (保持不變) ---
 async function getValue(db: Knex, key: string): Promise<string | null> {
@@ -26,24 +35,12 @@ async function setValue(db: Knex, key: string, value: string): Promise<void> {
     .merge();
 }
 
-// --- 隨手筆記 (Scratchpad Notes) CRUD 操作 ---
 
-/**
- * 目的：取得所有隨手筆記，並依照建立時間由舊到新排序。
- * @param db - Knex 資料庫實例。
- * @returns {Promise<ScratchpadNote[]>} - 回傳筆記物件的陣列。
- */
+// --- 隨手筆記 (Scratchpad Notes) CRUD 操作 (保持不變) ---
 async function getAllScratchpadNotes(db: Knex): Promise<ScratchpadNote[]> {
-  // --- 修改點：將 'desc' 改為 'asc' ---
   return db<ScratchpadNote>('scratchpad_notes').orderBy('created_at', 'asc');
 }
 
-/**
- * 目的：新增一筆隨手筆記。
- * @param db - Knex 資料庫實例。
- * @param content - 新筆記的文字內容。
- * @returns {Promise<ScratchpadNote>} - 回傳剛建立完成的筆記物件。
- */
 async function addScratchpadNote(db: Knex, content: string): Promise<ScratchpadNote> {
   const [newNote] = await db<ScratchpadNote>('scratchpad_notes')
     .insert({ content })
@@ -51,13 +48,6 @@ async function addScratchpadNote(db: Knex, content: string): Promise<ScratchpadN
   return newNote;
 }
 
-/**
- * 目的：更新一筆既有的隨手筆記。
- * @param db - Knex 資料庫實例。
- * @param id - 要更新的筆記 ID。
- * @param content - 新的文字內容。
- * @returns {Promise<ScratchpadNote | null>} - 回傳更新後的筆記物件，如果找不到則回傳 null。
- */
 async function updateScratchpadNote(db: Knex, id: number, content: string): Promise<ScratchpadNote | null> {
   const [updatedNote] = await db<ScratchpadNote>('scratchpad_notes')
     .where('id', id)
@@ -66,12 +56,6 @@ async function updateScratchpadNote(db: Knex, id: number, content: string): Prom
   return updatedNote || null;
 }
 
-/**
- * 目的：刪除一筆隨手筆記。
- * @param db - Knex 資料庫實例。
- * @param id - 要刪除的筆記 ID。
- * @returns {Promise<boolean>} - 回傳是否刪除成功。
- */
 async function deleteScratchpadNote(db: Knex, id: number): Promise<boolean> {
   const deletedRows = await db<ScratchpadNote>('scratchpad_notes')
     .where('id', id)
@@ -80,7 +64,54 @@ async function deleteScratchpadNote(db: Knex, id: number): Promise<boolean> {
 }
 
 
-// --- 將所有函式匯出 ---
+// --- 2. 新增：任務清單 (Task Lists) CRUD 操作 ---
+
+/**
+ * 目的：取得所有任務清單，按名稱排序。
+ */
+async function getTaskLists(db: Knex): Promise<TaskList[]> {
+  return db<TaskList>('task_lists').orderBy('name', 'asc');
+}
+
+/**
+ * 目的：根據 ID 取得單一任務清單的詳細資訊。
+ */
+async function getTaskList(db: Knex, id: number): Promise<TaskList | null> {
+  const taskList = await db<TaskList>('task_lists').where('id', id).first();
+  return taskList || null;
+}
+
+/**
+ * 目的：建立一個新的任務清單。
+ */
+async function createTaskList(db: Knex, name: string): Promise<TaskList> {
+  const [newTaskList] = await db<TaskList>('task_lists')
+    .insert({ name })
+    .returning('*');
+  return newTaskList;
+}
+
+/**
+ * 目的：更新指定任務清單的 Markdown 內容。
+ */
+async function updateTaskListContent(db: Knex, id: number, content: string): Promise<TaskList | null> {
+  const [updatedTaskList] = await db<TaskList>('task_lists')
+    .where('id', id)
+    .update({ content, updated_at: db.fn.now() }) // 同時更新 'updated_at' 時間戳
+    .returning('*');
+  return updatedTaskList || null;
+}
+
+/**
+ * 目的：刪除一個任務清單。
+ */
+async function deleteTaskList(db: Knex, id: number): Promise<boolean> {
+  const deletedRows = await db<TaskList>('task_lists').where('id', id).del();
+  return deletedRows > 0;
+}
+
+
+// --- 3. 將所有函式匯出 ---
 export const databaseService = {
   // Key-Value
   getValue,
@@ -90,4 +121,10 @@ export const databaseService = {
   addScratchpadNote,
   updateScratchpadNote,
   deleteScratchpadNote,
+  // Task Lists
+  getTaskLists,
+  getTaskList,
+  createTaskList,
+  updateTaskListContent,
+  deleteTaskList,
 };

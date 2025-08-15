@@ -110,7 +110,7 @@ function cancelEditing() {
   flex-shrink: 0;
 }
 
-.focus-card {
+.board-note.focus-card {
   border-left: 4px solid var(--color-personal);
 }
 

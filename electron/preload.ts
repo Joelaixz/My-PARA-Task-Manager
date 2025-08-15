@@ -29,9 +29,19 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   getMit: (): Promise<string | null> => ipcRenderer.invoke('get-mit'),
   setMit: (content: string): Promise<void> => ipcRenderer.invoke('set-mit', content),
 
-  // Scratchpad Notes (新增)
+  // Scratchpad Notes
   getScratchpadNotes: (): Promise<any[]> => ipcRenderer.invoke('get-scratchpad-notes'),
   addScratchpadNote: (content: string): Promise<any> => ipcRenderer.invoke('add-scratchpad-note', content),
   updateScratchpadNote: (id: number, content: string): Promise<any> => ipcRenderer.invoke('update-scratchpad-note', id, content),
   deleteScratchpadNote: (id: number): Promise<boolean> => ipcRenderer.invoke('delete-scratchpad-note', id),
+
+  // Task Lists
+  getTaskLists: (): Promise<any[]> => ipcRenderer.invoke('get-task-lists'),
+  getTaskList: (id: number): Promise<any | null> => ipcRenderer.invoke('get-task-list', id),
+  createTaskList: (name: string): Promise<any> => ipcRenderer.invoke('create-task-list', name),
+  updateTaskListContent: (id: number, content: string): Promise<any | null> => ipcRenderer.invoke('update-task-list-content', id, content),
+  deleteTaskList: (id: number): Promise<boolean> => ipcRenderer.invoke('delete-task-list', id),
+
+  // Markdown 解析
+  parseMarkdownTasks: (markdownContent: string): Promise<any[]> => ipcRenderer.invoke('parse-markdown-tasks', { content: markdownContent }),
 })

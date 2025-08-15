@@ -1,4 +1,20 @@
-// 1. 在檔案頂部引入 ScratchpadNote 型別
+// --- 1. 新增 ParsedTask 型別 ---
+interface ParsedTask {
+  id: string;
+  content: string;
+  isCompleted: boolean;
+  isPinned: boolean;
+  children: ParsedTask[];
+}
+
+interface TaskList {
+  id: number;
+  name: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 interface ScratchpadNote {
   id: number;
   content: string;
@@ -44,10 +60,20 @@ interface Window {
     getMit(): Promise<string | null>
     setMit(content: string): Promise<void>
 
-    // --- 2. 新增：Scratchpad Notes 的型別定義 ---
+    // Scratchpad Notes
     getScratchpadNotes(): Promise<ScratchpadNote[]>
     addScratchpadNote(content: string): Promise<ScratchpadNote>
     updateScratchpadNote(id: number, content: string): Promise<ScratchpadNote | null>
     deleteScratchpadNote(id: number): Promise<boolean>
+
+    // Task Lists
+    getTaskLists(): Promise<TaskList[]>
+    getTaskList(id: number): Promise<TaskList | null>
+    createTaskList(name: string): Promise<TaskList>
+    updateTaskListContent(id: number, content: string): Promise<TaskList | null>
+    deleteTaskList(id: number): Promise<boolean>
+    
+    // --- 2. 新增 Markdown 解析器的型別定義 ---
+    parseMarkdownTasks(markdownContent: string): Promise<ParsedTask[]>
   }
 }

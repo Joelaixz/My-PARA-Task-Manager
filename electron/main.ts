@@ -5,6 +5,7 @@ import path from 'node:path'
 import knex, { type Knex } from 'knex'
 import { databaseService } from './databaseService'
 import { fileService } from './fileService'
+import { parseMarkdownToTasks } from './markdownTaskParser'
 
 const require = createRequire(import.meta.url)
 const knexConfig: { [key: string]: Knex.Config } = require('../knexfile.cjs');
@@ -102,20 +103,36 @@ app.whenReady().then(() => {
     })
   })
 
-  // 檔案操作 (呼叫 fileService)
+  // 檔案操作
   ipcMain.handle('get-files', (event, directoryPath?: string) => fileService.getFiles(win, directoryPath))
   ipcMain.handle('read-file', (event, filePath: string) => fileService.readFile(filePath))
   ipcMain.handle('save-file', (event, filePath: string, content: string) => fileService.saveFile(filePath, content))
   ipcMain.handle('create-file', (event, parentDir: string, fileName: string, rootPath: string) => fileService.createFile(parentDir, fileName, rootPath))
   ipcMain.handle('create-folder', (event, parentDir: string, folderName: string, rootPath: string) => fileService.createFolder(parentDir, folderName, rootPath))
   
-  // 資料庫操作 (呼叫 databaseService)
-  // -- Key-Value
+  // 資料庫操作
   ipcMain.handle('get-mit', () => databaseService.getValue(db, 'mit'))
   ipcMain.handle('set-mit', (event, content: string) => databaseService.setValue(db, 'mit', content))
-  // -- Scratchpad Notes (新增)
   ipcMain.handle('get-scratchpad-notes', () => databaseService.getAllScratchpadNotes(db))
   ipcMain.handle('add-scratchpad-note', (event, content: string) => databaseService.addScratchpadNote(db, content))
   ipcMain.handle('update-scratchpad-note', (event, id: number, content: string) => databaseService.updateScratchpadNote(db, id, content))
   ipcMain.handle('delete-scratchpad-note', (event, id: number) => databaseService.deleteScratchpadNote(db, id))
+  ipcMain.handle('get-task-lists', () => databaseService.getTaskLists(db))
+  ipcMain.handle('get-task-list', (event, id: number) => databaseService.getTaskList(db, id))
+  ipcMain.handle('create-task-list', (event, name: string) => databaseService.createTaskList(db, name))
+  ipcMain.handle('update-task-list-content', (event, id: number, content: string) => databaseService.updateTaskListContent(db, id, content))
+  ipcMain.handle('delete-task-list', (event, id: number) => databaseService.deleteTaskList(db, id))
+
+  // Markdown 解析器
+  ipcMain.handle('parse-markdown-tasks', (event, { content }: { content: string }) => {
+    console.log('--- Received Markdown to Parse ---');
+    console.log(content); // 現在這裡應該能正確印出 Markdown 文字
+    
+    const result = parseMarkdownToTasks(content);
+    
+    console.log('--- Parsing Result ---');
+    console.log(JSON.stringify(result, null, 2));
+
+    return result;
+  });
 })

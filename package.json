@@ -23,6 +23,8 @@
     "marked": "^16.1.2",
     "pdfjs-dist": "^4.4.178",
     "pinia": "^3.0.3",
+    "remark": "^15.0.1",
+    "remark-gfm": "^4.0.1",
     "turndown": "^7.2.0",
     "vue": "^3.4.21",
     "vue-router": "^4.5.1"

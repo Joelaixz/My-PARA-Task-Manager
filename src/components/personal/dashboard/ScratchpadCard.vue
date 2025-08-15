@@ -122,7 +122,7 @@ function cancelEdit() {
 </template>
 
 <style scoped>
-.scratchpad-card {
+.board-note.scratchpad-card {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
