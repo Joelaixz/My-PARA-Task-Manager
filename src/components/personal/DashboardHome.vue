@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-// --- 1. 匯入 FocusCard 和新的 ScratchpadCard 元件 ---
 import FocusCard from './dashboard/FocusCard.vue';
 import ScratchpadCard from './dashboard/ScratchpadCard.vue';
+// --- 1. 匯入新的 TodayTasks 元件 ---
+import TodayTasksCard from './dashboard/TodayTasksCard.vue';
 
-// --- 模擬資料 (Mock Data) ---
-const todayTasks = ref([
-  { id: 1, text: '回覆設計團隊的 Email', done: false },
-  { id: 2, text: '草擬「專案A」的初步構想', done: true },
-  { id: 3, text: '預約下午三點的團隊會議', done: false },
-  { id: 4, text: '研究新的 Vite 外掛程式', done: false },
-]);
+
+// --- 2. 移除舊的 todayTasks 假資料 ---
+// const todayTasks = ref([...]);
 
 const urgentCountdown = ref({
   targetDate: new Date(new Date().getTime() + 3 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000), 
@@ -21,9 +18,6 @@ const futureReminder = ref({
   date: '8月25日',
   event: '參加技術分享會',
 });
-
-// --- 2. 移除舊的 scratchpadContent 假資料 ---
-// const scratchpadContent = ref('');
 
 // --- 倒數計時器邏輯 ---
 const countdownDisplay = ref('');
@@ -74,16 +68,7 @@ onUnmounted(() => {
        <p class="reminder-event">{{ futureReminder.event }}</p>
     </div>
 
-    <div class="board-note tasks-card">
-      <h2 class="note-title">📋 今日任務清單</h2>
-      <ul class="task-list">
-        <li v-for="task in todayTasks" :key="task.id" :class="{ 'is-done': task.done }">
-          <span class="checkbox-icon">{{ task.done ? '✅' : '⬜️' }}</span>
-          <span class="task-text">{{ task.text }}</span>
-        </li>
-      </ul>
-      <a href="#" class="view-all-link">查看完整清單...</a>
-    </div>
+    <TodayTasksCard />
 
     <ScratchpadCard />
 
@@ -97,14 +82,8 @@ onUnmounted(() => {
   gap: 1.5rem;
 }
 
-.board-note {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-}
+/* 註解：移除 .board-note 的樣式，因為所有卡片都已經是獨立元件，
+   各自管理自己的樣式，父元件只需要負責網格佈局即可。 */
 
 .note-title {
   font-size: 0.8rem;
@@ -116,20 +95,28 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-/* --- 4. 移除舊的 scratchpad-card 相關樣式 --- */
-
-/* Grid 佈局設定 */
+/* --- 4. 修改點：使用 :deep() 選擇器將 Grid 佈局應用到子元件的根元素上 --- */
 :deep(.focus-card) {
   grid-column: span 6;
 }
 :deep(.scratchpad-card) {
   grid-column: span 6;
 }
+:deep(.tasks-card) {
+  grid-column: span 6;
+}
 
-/* 倒數計時卡片 */
+
+/* 倒數計時卡片 (暫時保留，未來也應元件化) */
 .countdown-card {
   grid-column: span 3;
   border-left: 4px solid var(--color-projects);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
 }
 .countdown-title {
   font-size: 1rem;
@@ -145,10 +132,16 @@ onUnmounted(() => {
   margin-top: auto;
 }
 
-/* 提醒卡片 */
+/* 提醒卡片 (暫時保留，未來也應元件化) */
 .reminder-card {
   grid-column: span 3;
   border-left: 4px solid var(--color-areas);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
 }
 .reminder-date {
   font-size: 1.25rem;
@@ -163,40 +156,11 @@ onUnmounted(() => {
   margin-top: auto;
 }
 
-/* 任務列表卡片 */
-.tasks-card {
-  grid-column: span 6;
-  border-left: 4px solid var(--color-resources);
-}
-.task-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 1rem 0;
-}
-.task-list li {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 0;
-  font-size: 0.9rem;
-}
-.task-list li.is-done .task-text {
-  text-decoration: line-through;
-  opacity: 0.6;
-}
-.checkbox-icon {
-  margin-right: 0.75rem;
-}
-.view-all-link {
-  font-size: 0.8rem;
-  color: var(--link-color);
-  text-decoration: none;
-  margin-top: auto;
-}
-.view-all-link:hover { text-decoration: underline; }
 
 /* 確保所有卡片都有最小高度 */
 :deep(.focus-card),
 :deep(.scratchpad-card),
+:deep(.tasks-card),
 .countdown-card, 
 .reminder-card {
   min-height: 180px;
