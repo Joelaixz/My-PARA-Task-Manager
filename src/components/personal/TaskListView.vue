@@ -3,8 +3,8 @@ import { ref, onMounted, watch } from 'vue';
 import MarkdownEditor from '../MarkdownEditor.vue';
 import TaskListItem from './TaskListItem.vue';
 
-const sampleMarkdown = `- [ ] 重要的主要任務
-  - [ ] 子任務一
+const sampleMarkdown = `- [ ] 重要的主要任務 [截止:2025-12-20]
+  - [ ] 子任務一 [截止:2025-12-10]
   - [ ] 子任務二 [pinned]
 - [x] 已經完成的任務
 `;
@@ -15,6 +15,11 @@ const activeListContent = ref('');
 const parsedTasks = ref<ParsedTask[]>([]);
 const isLoading = ref(false);
 const isSaving = ref(false);
+
+const isEditing = ref(false);
+// --- 1. 修改點：將 isEditorExpanded 初始值設為 false ---
+// 目的：符合您的定義，「收合」狀態 (isEditorExpanded=false) 代表 50/50 佈局。
+const isEditorExpanded = ref(false); 
 
 onMounted(async () => {
   isLoading.value = true;
@@ -42,6 +47,8 @@ watch(activeListId, async (newId) => {
     return;
   }
   
+  isEditing.value = false;
+  isEditorExpanded.value = false; // 切換列表時，重置為 50/50 模式
   isLoading.value = true;
   try {
     const list = await window.ipcRenderer.getTaskList(newId);
@@ -77,6 +84,13 @@ async function saveChanges() {
     isSaving.value = false;
   }
 }
+
+async function handleDoneEditing() {
+  await saveChanges();
+  isEditing.value = false;
+  isEditorExpanded.value = false; // 退出編輯時，重置為 50/50 模式
+}
+
 
 function updateMarkdownTask(tasks: ParsedTask[], id: string, updates: { isCompleted?: boolean; isPinned?: boolean }): boolean {
   for (const task of tasks) {
@@ -131,31 +145,41 @@ async function handlePinTask(payload: { id: string; isPinned: boolean }) {
         </option>
       </select>
       
-      <button class="done-button" @click="saveChanges" :disabled="isSaving">
-        {{ isSaving ? '儲存中...' : '儲存變更' }}
+      <button v-if="!isEditing" class="edit-button" @click="isEditing = true">
+        編輯
       </button>
     </div>
     
-    <div class="split-layout">
+    <div class="split-layout" :class="{ 'preview-only': !isEditing, 'editor-expanded': isEditing && isEditorExpanded }">
       <div class="preview-pane">
         <div v-if="isLoading" class="loading-text">載入中...</div>
-        <div v-else class="task-render-list">
+        <table v-else class="task-table">
+          <thead>
+            <tr>
+              <th class="status-col">狀態</th>
+              <th class="task-col">任務</th>
+              <th class="due-date-col">截止日期</th>
+              <th class="actions-col">操作</th>
+            </tr>
+          </thead>
           <TaskListItem 
             v-for="task in parsedTasks"
             :key="task.id"
             :task="task"
+            :level="0"
             @update-task="handleUpdateTask"
             @pin-task="handlePinTask"
           />
-        </div>
+        </table>
       </div>
 
-      <div class="editor-pane">
+      <div v-if="isEditing" class="editor-pane">
         <MarkdownEditor 
           v-model="activeListContent"
-          :is-editor-expanded="true"
+          :is-editor-expanded="isEditorExpanded"
           :is-saving="isSaving"
-          @toggle-expansion="() => {}"
+          @done="handleDoneEditing"
+          @toggle-expansion="isEditorExpanded = !isEditorExpanded"
         />
       </div>
     </div>
@@ -193,7 +217,7 @@ async function handlePinTask(payload: { id: string; isPinned: boolean }) {
   font-size: 0.9rem;
 }
 
-.done-button {
+.edit-button {
   margin-left: auto;
   background-color: var(--color-personal);
   color: var(--text-accent-contrast);
@@ -203,10 +227,6 @@ async function handlePinTask(payload: { id: string; isPinned: boolean }) {
   cursor: pointer;
   font-size: 0.85rem;
 }
-.done-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
 
 .split-layout {
   display: flex;
@@ -214,29 +234,66 @@ async function handlePinTask(payload: { id: string; isPinned: boolean }) {
   overflow: hidden;
 }
 
-.editor-pane,
+/* --- 3. 修改點：重新定義三種狀態下的 flex 佈局樣式 --- */
+
+/* 預設雙欄編輯 (50/50) */
 .preview-pane {
-  width: 50%;
+  flex: 1 1 50%;
+  min-width: 0;
   height: 100%;
   overflow-y: auto;
-}
-
-.editor-pane {
-  padding: 0;
-}
-
-/* --- 2. 修改點：將邊框樣式從 editor-pane 移至 preview-pane --- */
-.preview-pane {
   padding: 1rem 1.5rem;
   border-right: 1px solid var(--border-color);
+  transition: all 0.3s ease-in-out;
 }
+.editor-pane {
+  flex: 1 1 50%;
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  padding: 0;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 狀態一：僅預覽模式 (100/0) */
+.split-layout.preview-only .preview-pane {
+  flex-basis: 100%;
+  border-right: none;
+}
+
+/* 狀態三：專注編輯模式 (0/100) */
+.split-layout.editor-expanded .preview-pane {
+  flex-basis: 0;
+  padding-left: 0;
+  padding-right: 0;
+  overflow: hidden;
+  border-right: none;
+}
+.split-layout.editor-expanded .editor-pane {
+  flex-basis: 100%;
+}
+
 
 .loading-text {
   color: var(--text-secondary);
 }
-.task-render-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+
+.task-table {
+  width: 100%;
+  border-collapse: collapse;
 }
+
+.task-table th {
+  padding: 0.75rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.status-col { width: 80px; text-align: center; }
+.task-col { width: auto; text-align: left; }
+.due-date-col { width: 120px; text-align: center; }
+.actions-col { width: 80px; text-align: center; }
 </style>

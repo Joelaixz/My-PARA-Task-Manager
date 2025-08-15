@@ -1,9 +1,10 @@
-// --- 1. 新增 ParsedTask 型別 ---
+// --- ParsedTask 型別 ---
 interface ParsedTask {
   id: string;
   content: string;
   isCompleted: boolean;
   isPinned: boolean;
+  dueDate: string | null; 
   children: ParsedTask[];
 }
 
@@ -73,7 +74,7 @@ interface Window {
     updateTaskListContent(id: number, content: string): Promise<TaskList | null>
     deleteTaskList(id: number): Promise<boolean>
     
-    // --- 2. 新增 Markdown 解析器的型別定義 ---
+    // Markdown 解析
     parseMarkdownTasks(markdownContent: string): Promise<ParsedTask[]>
   }
 }

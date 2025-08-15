@@ -8,17 +8,16 @@ export interface ParsedTask {
   content: string;
   isCompleted: boolean;
   isPinned: boolean;
+  // --- 1. 新增 dueDate 屬性 ---
+  // 目的：在我們的資料結構中，為截止日期預留一個位置。
+  // 'string | null' 型別表示一個任務可以有截止日期，也可以沒有。
+  dueDate: string | null;
   children: ParsedTask[];
 }
 
 const processor = unified().use(remarkParse).use(remarkGfm);
 let taskIdCounter = 0;
 
-/**
- * 輔助函式：安全地遞迴遍歷任何 mdast 節點，並提取所有文字內容。
- * @param node - mdast 語法樹中的任何節點。
- * @returns {string} - 拼接後的純文字。
- */
 function stringifyNode(node: Node): string {
   if (node.type === 'text') {
     return (node as Text).value;
@@ -31,10 +30,6 @@ function stringifyNode(node: Node): string {
   return '';
 }
 
-/**
- * 輔助函式：遞迴地處理 mdast 節點，將其轉換為我們的 ParsedTask 結構
- * @param node - mdast 語法樹中的 List 或 ListItem 節點
- */
 function processNode(node: List | ListItem): ParsedTask[] {
   const tasks: ParsedTask[] = [];
 
@@ -44,11 +39,17 @@ function processNode(node: List | ListItem): ParsedTask[] {
     const listItem = child as ListItem;
     const isCompleted = listItem.checked === true;
 
-    // --- 修改點：精準提取當前任務行的文字 ---
-    // 目的：只尋找並處理 ListItem 下的第一個 Paragraph 作為其內容，
-    // 忽略後續的巢狀 List，從而避免文字串接問題。
     const paragraphNode = listItem.children.find(childNode => childNode.type === 'paragraph') as Paragraph;
     let textContent = paragraphNode ? stringifyNode(paragraphNode).trim() : '';
+
+    // --- 2. 新增：解析截止日期 ---
+    // 目的：使用正規表示式來尋找並提取截止日期的標籤。
+    let dueDate: string | null = null;
+    const dueDateMatch = textContent.match(/\[截止:(\d{4}-\d{2}-\d{2})\]/);
+    if (dueDateMatch) {
+      dueDate = dueDateMatch[1]; // 提取日期字串，例如 "2025-08-15"
+      textContent = textContent.replace(dueDateMatch[0], '').trim(); // 從內容中移除標籤
+    }
 
     const isPinned = textContent.includes('[pinned]');
     if (isPinned) {
@@ -60,6 +61,7 @@ function processNode(node: List | ListItem): ParsedTask[] {
       content: textContent,
       isCompleted,
       isPinned,
+      dueDate, // 將解析出的日期存入物件
       children: [],
     };
 
