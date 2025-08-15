@@ -48,11 +48,11 @@ watch(() => route.name, () => {
 <template>
   <div class="main-layout">
     <nav class="l1-sidebar">
-      <RouterLink to="/" title="個人">01</RouterLink>
-      <RouterLink to="/projects" title="專案">02</RouterLink>
-      <RouterLink to="/areas" title="領域">03</RouterLink>
-      <RouterLink to="/resources" title="資源">04</RouterLink>
-      <RouterLink to="/archives" title="封存">05</RouterLink>
+      <RouterLink to="/" title="個人">🏠</RouterLink>
+      <RouterLink to="/projects" title="專案">🚀</RouterLink>
+      <RouterLink to="/areas" title="領域">📚</RouterLink>
+      <RouterLink to="/resources" title="資源">📦</RouterLink>
+      <RouterLink to="/archives" title="封存">🔐</RouterLink>
     </nav>
     
     <SidebarView />
