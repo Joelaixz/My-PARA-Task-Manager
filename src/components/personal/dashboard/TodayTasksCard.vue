@@ -1,39 +1,36 @@
+// 檔案位置: src/components/personal/dashboard/TodayTasksCard.vue
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-// 註解：由於「查看全部」功能改為內部展開，不再需要 RouterLink
-// import { RouterLink } from 'vue-router';
+import { onMounted, computed, ref } from 'vue';
+// --- 1. 新增點：匯入 useMainStore 和 PinnedTask 型別 ---
+import { useMainStore, type PinnedTask } from '../../../store';
 
-interface PinnedTask extends ParsedTask {
-  sourceList: string;
-  sourceListId: number;
-}
+// --- 2. 新增點：獲取 mainStore 的實例 ---
+const mainStore = useMainStore();
 
-const pinnedTasks = ref<PinnedTask[]>([]);
-const isLoading = ref(true);
-// --- 1. 新增：控制列表是否完全展開的狀態 ---
+// --- 3. 修改點：移除本地狀態，改用 computed 從 store 讀取 ---
+// 目的：讓元件的顯示資料直接與 Pinia store 的狀態綁定。
+const displayedTasks = computed(() => {
+  // isExpanded 的邏輯保持不變，但資料來源變為 mainStore.pinnedTasks
+  if (isExpanded.value) {
+    return mainStore.pinnedTasks;
+  }
+  return mainStore.pinnedTasks.slice(0, 3);
+});
+const isLoading = computed(() => mainStore.isLoadingPinnedTasks);
+
+// isExpanded 的本地狀態保持不變，因为它只屬於這個元件的 UI 行為
 const isExpanded = ref(false);
 
-const displayedTasks = computed(() => {
-  // 如果是展開狀態，顯示所有任務；否則只顯示前 3 個
-  if (isExpanded.value) {
-    return pinnedTasks.value;
-  }
-  return pinnedTasks.value.slice(0, 3);
+// --- 4. 修改點：簡化 onMounted ---
+// 目的：元件掛載時，不再自己處理複雜的資料獲取邏輯，而是呼叫 store 的 action。
+onMounted(() => {
+  mainStore.fetchPinnedTasks();
 });
 
-function findPinnedTasks(tasks: ParsedTask[], sourceName: string, sourceId: number): PinnedTask[] {
-  let results: PinnedTask[] = [];
-  for (const task of tasks) {
-    if (task.isPinned) {
-      results.push({ ...task, sourceList: sourceName, sourceListId: sourceId });
-    }
-    if (task.children && task.children.length > 0) {
-      results = results.concat(findPinnedTasks(task.children, sourceName, sourceId));
-    }
-  }
-  return results;
-}
 
+// --- 5. 修改點：更新 handleUpdateTask 和 handlePinTask ---
+// 目的：當使用者操作任務時，除了更新後端，還要再次觸發 store 的 action，
+//       以確保所有訂閱此狀態的元件（如 WelcomeHeader）都能收到最新資料。
 async function updateSourceMarkdown(task: PinnedTask, updates: { isCompleted?: boolean; isPinned?: boolean }) {
   try {
     const sourceList = await window.ipcRenderer.getTaskList(task.sourceListId);
@@ -64,34 +61,19 @@ async function updateSourceMarkdown(task: PinnedTask, updates: { isCompleted?: b
 }
 
 async function handleUpdateTask(task: PinnedTask, isCompleted: boolean) {
-  task.isCompleted = isCompleted;
   await updateSourceMarkdown(task, { isCompleted });
+  // 重新獲取全局釘選任務狀態
+  mainStore.fetchPinnedTasks();
 }
 
 async function handlePinTask(task: PinnedTask) {
-  pinnedTasks.value = pinnedTasks.value.filter(p => p.id !== task.id);
   await updateSourceMarkdown(task, { isPinned: false });
+  // 重新獲取全局釘選任務狀態
+  mainStore.fetchPinnedTasks();
 }
 
-onMounted(async () => {
-  try {
-    const allLists = await window.ipcRenderer.getTaskLists();
-    let allPinnedTasks: PinnedTask[] = [];
-
-    for (const list of allLists) {
-      if (list.content) {
-        const parsed = await window.ipcRenderer.parseMarkdownTasks(list.content);
-        const pinned = findPinnedTasks(parsed, list.name, list.id);
-        allPinnedTasks = allPinnedTasks.concat(pinned);
-      }
-    }
-    pinnedTasks.value = allPinnedTasks;
-  } catch (error) {
-    console.error("Failed to load pinned tasks:", error);
-  } finally {
-    isLoading.value = false;
-  }
-});
+// --- 6. 刪除點：移除本地的 findPinnedTasks 函式 ---
+// 因為這個邏輯已經被遷移到 Pinia store 的 fetchPinnedTasks action 中了。
 </script>
 
 <template>
@@ -99,15 +81,15 @@ onMounted(async () => {
     <div class="widget-header">
       <h3 class="widget-title">📋 今日任務清單</h3>
       <button 
-        v-if="pinnedTasks.length > 3" 
+        v-if="mainStore.pinnedTasks.length > 3" 
         @click="isExpanded = !isExpanded" 
         class="view-all-button"
       >
-        {{ isExpanded ? '收合' : `查看全部 (${pinnedTasks.length})` }}
+        {{ isExpanded ? '收合' : `查看全部 (${mainStore.pinnedTasks.length})` }}
       </button>
     </div>
     <div v-if="isLoading" class="feedback-message">讀取中...</div>
-    <table v-else-if="pinnedTasks.length > 0" class="task-table">
+    <table v-else-if="mainStore.pinnedTasks.length > 0" class="task-table">
       <thead>
         <tr>
           <th class="status-col">狀態</th>
@@ -152,7 +134,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* --- 4. 修改點：恢復卡片的基礎樣式 --- */
 .board-note.tasks-card {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
@@ -195,7 +176,6 @@ onMounted(async () => {
   border-collapse: collapse;
 }
 
-/* --- 5. 新增點：表格標頭樣式 --- */
 .task-table th {
   text-align: left;
   padding: 0.75rem 4px;
@@ -225,7 +205,6 @@ onMounted(async () => {
 .date-col { width: 100px; text-align: center; font-size: 13px; color: var(--text-secondary); }
 .action-col { width: 50px; text-align: center; }
 
-/* 讓表頭和內容對齊 */
 th.status-col, th.date-col, th.action-col {
   text-align: center;
 }
