@@ -1,5 +1,16 @@
+// 檔案位置: src/components/personal/TaskListItem.vue
 <script setup lang="ts">
 import { ref } from 'vue';
+
+// 介面定義
+interface ParsedTask {
+  id: string;
+  content: string;
+  isCompleted: boolean;
+  isPinned: boolean;
+  dueDate: string | null;
+  children: ParsedTask[];
+}
 
 interface Props {
   task: ParsedTask;
@@ -15,8 +26,10 @@ const emit = defineEmits<{
   (e: 'pin-task', payload: { id: string; isPinned: boolean }): void;
 }>();
 
+// 狀態
 const isExpanded = ref(true);
 
+// 方法
 function handleCheckboxChange(event: Event) {
   const target = event.target as HTMLInputElement;
   emit('update-task', { id: props.task.id, isCompleted: target.checked });
@@ -26,6 +39,7 @@ function handlePinClick() {
   emit('pin-task', { id: props.task.id, isPinned: !props.task.isPinned });
 }
 
+// 事件冒泡
 function bubbleUpdate(payload: { id: string; isCompleted: boolean }) {
   emit('update-task', payload);
 }
@@ -55,7 +69,7 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
         >
           ▶
         </span>
-        <span v-else class="toggle-arrow-placeholder"></span>
+        <span v-else class="arrow-placeholder"></span>
         
         <span class="task-content">{{ task.content }}</span>
       </div>
@@ -75,15 +89,16 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
     </td>
   </tr>
   
-  <TaskListItem
-    v-if="isExpanded"
-    v-for="childTask in task.children"
-    :key="childTask.id"
-    :task="childTask"
-    :level="props.level + 1"
-    @update-task="bubbleUpdate"
-    @pin-task="bubblePin"
-  />
+  <template v-if="isExpanded">
+    <TaskListItem
+      v-for="childTask in task.children"
+      :key="childTask.id"
+      :task="childTask"
+      :level="props.level + 1"
+      @update-task="bubbleUpdate"
+      @pin-task="bubblePin"
+    />
+  </template>
 </template>
 
 <style scoped>
@@ -94,19 +109,24 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
 .task-row td {
   padding: 0.75rem 0.5rem;
   border-bottom: 1px solid var(--border-color);
-  /* 修改點：讓內容垂直置中，更美觀 */
   vertical-align: middle; 
 }
 
-/* --- 修改點：為對應的欄位內容增加置中對齊 --- */
-.status-col {
+/* --- 1. 修正點：將置中對齊的樣式加回來 --- */
+/* 為什麼：這樣可以確保每一行的勾選框、日期和釘選按鈕，都與表格標頭完美置中對齊。 */
+.status-col,
+.due-date-col,
+.actions-col {
   text-align: center;
 }
+
 
 .task-checkbox {
   width: 16px;
   height: 16px;
   cursor: pointer;
+  /* 讓勾選框也能垂直置中對齊 */
+  vertical-align: middle;
 }
 
 .task-content-wrapper {
@@ -130,7 +150,7 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
 .toggle-arrow.is-expanded {
   transform: rotate(90deg);
 }
-.toggle-arrow-placeholder {
+.arrow-placeholder {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
@@ -146,27 +166,22 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
   color: var(--text-secondary);
 }
 
-.due-date-col {
-  text-align: center; /* 修改點 */
-}
 .due-date-text {
   font-size: 13px;
   color: var(--text-secondary);
-  /* 增加樣式讓日期更易讀 */
   background-color: var(--bg-tertiary);
   padding: 2px 6px;
   border-radius: 4px;
 }
 
-.actions-col {
-  text-align: center;
-}
 .pin-button {
   background: none;
   border: none;
   cursor: pointer;
   opacity: 0.3;
   transition: opacity 0.2s, transform 0.2s;
+  font-size: 16px; 
+  vertical-align: middle; 
 }
 .task-row:hover .pin-button {
   opacity: 0.6;

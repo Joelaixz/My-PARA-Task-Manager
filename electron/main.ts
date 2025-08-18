@@ -35,6 +35,7 @@ const db = knex({
 let win: BrowserWindow | null
 
 function createWindow() {
+  // ... (createWindow 函式內容保持不變)
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     width: 1600,
@@ -104,7 +105,7 @@ app.whenReady().then(() => {
     })
   })
 
-  // 檔案操作
+  // 檔案操作 (保持不變)
   ipcMain.handle('get-files', (event, directoryPath?: string) => fileService.getFiles(win, directoryPath))
   ipcMain.handle('read-file', (event, filePath: string) => fileService.readFile(filePath))
   ipcMain.handle('save-file', (event, filePath: string, content: string) => fileService.saveFile(filePath, content))
@@ -112,24 +113,12 @@ app.whenReady().then(() => {
   ipcMain.handle('create-folder', (event, parentDir: string, folderName: string, rootPath: string) => fileService.createFolder(parentDir, folderName, rootPath))
   
   // 資料庫操作
-  // --- 1. 修改點：呼叫 databaseService 中更具體的函式 ---
   ipcMain.handle('get-mit', () => databaseService.getMit(db))
   ipcMain.handle('set-mit', (event, content: string) => databaseService.setMit(db, content))
+  ipcMain.handle('get-last-path-for-mode', (event, mode: string) => databaseService.getLastPathForMode(db, mode));
+  ipcMain.handle('set-last-path-for-mode', (event, { mode, path }: { mode: string, path: string }) => databaseService.setLastPathForMode(db, mode, path));
 
-  // --- 2. 新增點：為不同模式（PARA）的路徑紀錄功能建立 IPC 通道 ---
-  // 目的：讓前端可以根據當前的模式（如 personal, projects）來儲存和讀取對應的資料夾路徑。
-  ipcMain.handle('get-last-path-for-mode', (event, mode: string) => {
-    // 為什麼：這個 handler 接收一個 mode 參數，並將其傳遞給 databaseService，
-    //         使得路徑的讀取是與特定模式相關聯的。
-    return databaseService.getLastPathForMode(db, mode);
-  });
-  ipcMain.handle('set-last-path-for-mode', (event, { mode, path }: { mode: string, path: string }) => {
-    // 為什麼：這個 handler 接收 mode 和 path，允許前端將特定模式的當前路徑持久化儲存。
-    //         這是在使用者選擇新資料夾後，由前端觸發的關鍵步驟。
-    return databaseService.setLastPathForMode(db, mode, path);
-  });
-
-  // 隨手筆記 (Scratchpad)
+  // 隨手筆記 (Scratchpad) (保持不變)
   ipcMain.handle('get-scratchpad-notes', () => databaseService.getAllScratchpadNotes(db))
   ipcMain.handle('add-scratchpad-note', (event, content: string) => databaseService.addScratchpadNote(db, content))
   ipcMain.handle('update-scratchpad-note', (event, id: number, content: string) => databaseService.updateScratchpadNote(db, id, content))
@@ -141,8 +130,13 @@ app.whenReady().then(() => {
   ipcMain.handle('create-task-list', (event, name: string) => databaseService.createTaskList(db, name))
   ipcMain.handle('update-task-list-content', (event, id: number, content: string) => databaseService.updateTaskListContent(db, id, content))
   ipcMain.handle('delete-task-list', (event, id: number) => databaseService.deleteTaskList(db, id))
+  // --- 新增點：建立更新排序的 IPC 通道 ---
+  // 目的：接收前端傳來的 ID 陣列，並呼叫後端服務更新資料庫。
+  ipcMain.handle('update-task-lists-order', (event, orderedIds: number[]) => {
+    return databaseService.updateTaskListsOrder(db, orderedIds);
+  });
 
-  // Markdown 解析器
+  // Markdown 解析器 (保持不變)
   ipcMain.handle('parse-markdown-tasks', (event, { content }: { content: string }) => {
     const result = parseMarkdownToTasks(content);
     return result;
