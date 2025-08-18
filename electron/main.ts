@@ -1,3 +1,4 @@
+// 檔案位置: electron/main.ts
 import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
@@ -111,12 +112,30 @@ app.whenReady().then(() => {
   ipcMain.handle('create-folder', (event, parentDir: string, folderName: string, rootPath: string) => fileService.createFolder(parentDir, folderName, rootPath))
   
   // 資料庫操作
-  ipcMain.handle('get-mit', () => databaseService.getValue(db, 'mit'))
-  ipcMain.handle('set-mit', (event, content: string) => databaseService.setValue(db, 'mit', content))
+  // --- 1. 修改點：呼叫 databaseService 中更具體的函式 ---
+  ipcMain.handle('get-mit', () => databaseService.getMit(db))
+  ipcMain.handle('set-mit', (event, content: string) => databaseService.setMit(db, content))
+
+  // --- 2. 新增點：為不同模式（PARA）的路徑紀錄功能建立 IPC 通道 ---
+  // 目的：讓前端可以根據當前的模式（如 personal, projects）來儲存和讀取對應的資料夾路徑。
+  ipcMain.handle('get-last-path-for-mode', (event, mode: string) => {
+    // 為什麼：這個 handler 接收一個 mode 參數，並將其傳遞給 databaseService，
+    //         使得路徑的讀取是與特定模式相關聯的。
+    return databaseService.getLastPathForMode(db, mode);
+  });
+  ipcMain.handle('set-last-path-for-mode', (event, { mode, path }: { mode: string, path: string }) => {
+    // 為什麼：這個 handler 接收 mode 和 path，允許前端將特定模式的當前路徑持久化儲存。
+    //         這是在使用者選擇新資料夾後，由前端觸發的關鍵步驟。
+    return databaseService.setLastPathForMode(db, mode, path);
+  });
+
+  // 隨手筆記 (Scratchpad)
   ipcMain.handle('get-scratchpad-notes', () => databaseService.getAllScratchpadNotes(db))
   ipcMain.handle('add-scratchpad-note', (event, content: string) => databaseService.addScratchpadNote(db, content))
   ipcMain.handle('update-scratchpad-note', (event, id: number, content: string) => databaseService.updateScratchpadNote(db, id, content))
   ipcMain.handle('delete-scratchpad-note', (event, id: number) => databaseService.deleteScratchpadNote(db, id))
+  
+  // 任務清單 (Task Lists)
   ipcMain.handle('get-task-lists', () => databaseService.getTaskLists(db))
   ipcMain.handle('get-task-list', (event, id: number) => databaseService.getTaskList(db, id))
   ipcMain.handle('create-task-list', (event, name: string) => databaseService.createTaskList(db, name))
@@ -125,14 +144,7 @@ app.whenReady().then(() => {
 
   // Markdown 解析器
   ipcMain.handle('parse-markdown-tasks', (event, { content }: { content: string }) => {
-    console.log('--- Received Markdown to Parse ---');
-    console.log(content); // 現在這裡應該能正確印出 Markdown 文字
-    
     const result = parseMarkdownToTasks(content);
-    
-    console.log('--- Parsing Result ---');
-    console.log(JSON.stringify(result, null, 2));
-
     return result;
   });
 })

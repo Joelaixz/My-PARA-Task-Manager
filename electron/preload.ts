@@ -1,3 +1,4 @@
+// 檔案位置: electron/preload.ts
 import { ipcRenderer, contextBridge } from 'electron'
 
 contextBridge.exposeInMainWorld('ipcRenderer', {
@@ -28,6 +29,10 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   // Key-Value
   getMit: (): Promise<string | null> => ipcRenderer.invoke('get-mit'),
   setMit: (content: string): Promise<void> => ipcRenderer.invoke('set-mit', content),
+  // --- 新增點：為不同模式的路徑紀錄功能建立呼叫函式 ---
+  getLastPathForMode: (mode: string): Promise<string | null> => ipcRenderer.invoke('get-last-path-for-mode', mode),
+  setLastPathForMode: (mode: string, path: string): Promise<void> => ipcRenderer.invoke('set-last-path-for-mode', { mode, path }),
+
 
   // Scratchpad Notes
   getScratchpadNotes: (): Promise<any[]> => ipcRenderer.invoke('get-scratchpad-notes'),

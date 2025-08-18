@@ -1,15 +1,19 @@
+// 檔案位置: src/components/sidebar/FileExplorer.vue
 <script setup lang="ts">
-import { ref, computed, onUnmounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import path from 'path-browserify'
 import FileTree from './FileTree.vue'
 import SidebarHeader from './SidebarHeader.vue'
 import InputDialog from './InputDialog.vue'
-import { useFileStore } from '../../store'
+// --- 1. 修改點：同時匯入 useMainStore ---
+import { useFileStore, useMainStore } from '../../store'
 
-// 幾乎所有 SidebarView 的 script 內容都移到這裡
 const router = useRouter()
 const fileStore = useFileStore()
+// --- 2. 新增點：取得 mainStore 的實例 ---
+// 目的：我們需要 mainStore 來得知是從哪個模式（例如 'personal'）切換到檔案總管的。
+const mainStore = useMainStore()
+
 
 interface FileEntry {
   name: string;
@@ -31,12 +35,13 @@ const selectedFolderName = ref('檔案總管')
 const rootPath = ref<string | null>(null)
 const isLoading = ref(false)
 
-// 目的：接收來自父元件 SidebarView 的 toggleCollapse 請求
 const emit = defineEmits(['toggle-collapse']);
 
-// 處理載入檔案的邏輯
+// --- 3. 修改點：調整 handleLoadFiles 函式 ---
+// 目的：在使用者手動選擇新資料夾後，儲存該路徑。
 async function handleLoadFiles(directoryPath?: string) {
   isLoading.value = true
+  // 僅在手動選擇資料夾時清空現有狀態
   if (!directoryPath) {
     fileList.value = []
     rootPath.value = null
@@ -51,10 +56,20 @@ async function handleLoadFiles(directoryPath?: string) {
       selectedFolderName.value = result.folderName;
       rootPath.value = result.rootPath;
 
-      if (!directoryPath) {
-         fileStore.selectFolder(rootPath.value);
-         fileStore.toggleFolderExpansion(rootPath.value);
+      // 如果 directoryPath 是 undefined，代表是使用者透過對話框選擇的
+      // 這時我們需要儲存這個新路徑
+      if (!directoryPath && mainStore.previousSidebarMode) {
+        // 為什麼：將新選擇的路徑與當前的模式關聯並儲存，
+        //         這樣下次從同一個模式切換回來時，就能直接載入。
+        await window.ipcRenderer.setLastPathForMode(mainStore.previousSidebarMode, result.rootPath);
       }
+
+      // 確保根目錄總是展開的
+      if (rootPath.value) {
+        fileStore.selectFolder(rootPath.value);
+        fileStore.toggleFolderExpansion(rootPath.value);
+      }
+
     } else if (!directoryPath) {
       selectedFolderName.value = '檔案總管';
       fileList.value = [];
@@ -68,15 +83,27 @@ async function handleLoadFiles(directoryPath?: string) {
   }
 }
 
-// 處理建立新項目(檔案/資料夾)的邏輯
+// --- 4. 新增點：在元件掛載時自動載入最後路徑 ---
+onMounted(async () => {
+  // 為什麼：這是實現「記憶功能」的入口。當元件第一次顯示時，
+  //         我們檢查是從哪個模式切換過來的。
+  if (mainStore.previousSidebarMode) {
+    const lastPath = await window.ipcRenderer.getLastPathForMode(mainStore.previousSidebarMode);
+    // 如果資料庫中存在該模式的路徑，就自動載入它。
+    if (lastPath) {
+      await handleLoadFiles(lastPath);
+    }
+  }
+});
+
+
+// 處理建立新項目(檔案/資料夾)的邏輯 (保持不變)
 function triggerCreateNewItem(type: 'file' | 'folder') {
   if (!rootPath.value) {
     alert('請先選擇一個根資料夾。');
     return;
   }
-
   creationType.value = type;
-
   if (type === 'file') {
     dialogTitle.value = '建立新檔案';
     showExtensionDialog.value = true;
@@ -86,33 +113,26 @@ function triggerCreateNewItem(type: 'file' | 'folder') {
     showExtensionDialog.value = false;
     currentCreateFunction.value = window.ipcRenderer.createFolder;
   }
-
   isDialogVisible.value = true;
 }
 
-// 處理彈出對話框確認後的邏輯
+// 處理彈出對話框確認後的邏輯 (保持不變)
 async function handleDialogConfirm(newItemName: string) {
   if (!newItemName || !currentCreateFunction.value || !rootPath.value) {
     return;
   }
-
   const parentDir = fileStore.selectedFolderPath || rootPath.value;
-
   if (!parentDir) {
     alert('無法確定建立位置，請先選擇一個資料夾。');
     return;
   }
-
   isLoading.value = true;
   try {
     const result = await currentCreateFunction.value(parentDir, newItemName, rootPath.value);
-
     if (result) {
       fileList.value = result.files;
       fileStore.ensurePathIsExpanded(result.newPath);
-
       await nextTick();
-
       if (creationType.value === 'file') {
         fileStore.setPendingEdit();
         fileStore.selectFile(result.newPath);
@@ -132,13 +152,12 @@ async function handleDialogConfirm(newItemName: string) {
   }
 }
 
-// 監聽選中檔案的變化以觸發路由跳轉
+// 監聽選中檔案的變化以觸發路由跳轉 (保持不變)
 watch(() => fileStore.selectedFilePath, (newPath) => {
   if (newPath && router.currentRoute.value.path !== '/view') {
     router.push('/view')
   }
 })
-
 </script>
 
 <template>
@@ -174,7 +193,6 @@ watch(() => fileStore.selectedFilePath, (newPath) => {
 </template>
 
 <style scoped>
-/* 樣式直接從 SidebarView.vue 遷移過來 */
 .file-explorer-container {
   display: flex;
   flex-direction: column;

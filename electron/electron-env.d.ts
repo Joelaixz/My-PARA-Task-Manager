@@ -1,3 +1,4 @@
+// 檔案位置: electron/electron-env.d.ts
 // --- ParsedTask 型別 ---
 interface ParsedTask {
   id: string;
@@ -60,6 +61,9 @@ interface Window {
     // Key-Value
     getMit(): Promise<string | null>
     setMit(content: string): Promise<void>
+    // --- 新增點：為 window.ipcRenderer 物件添加新的型別定義 ---
+    getLastPathForMode(mode: string): Promise<string | null>
+    setLastPathForMode(mode: string, path: string): Promise<void>
 
     // Scratchpad Notes
     getScratchpadNotes(): Promise<ScratchpadNote[]>
