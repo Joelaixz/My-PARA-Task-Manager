@@ -259,7 +259,7 @@ async function handlePinTask(payload: { id: string; isPinned: boolean }) {
               <th class="status-col">狀態</th>
               <th class="task-col">任務</th>
               <th class="due-date-col">截止日期</th>
-              <th class="actions-col">操作</th>
+              <th class="actions-col">釘選</th>
             </tr>
           </thead>
           <tbody :key="activeListId">
@@ -329,16 +329,16 @@ async function handlePinTask(payload: { id: string; isPinned: boolean }) {
   transition: all 0.2s ease;
 }
 .action-button:hover {
-  border-color: var(--color-personal);
+  border-color: var(--color-personal-muted);
   color: var(--text-primary);
 }
 .action-button.primary {
-  background-color: var(--color-personal);
+  background-color: var(--bg-section-personal);
   color: var(--text-accent-contrast);
-  border-color: var(--color-personal);
+  border-color: var(--bg-section-personal);
 }
 .action-button.primary:hover {
-    background-color: var(--color-personal-hover);
+    background-color: var(--color-personal-muted);
 }
 
 .split-layout {

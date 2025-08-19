@@ -1,4 +1,3 @@
-// 檔案位置: src/components/personal/TaskListItem.vue
 <script setup lang="ts">
 import { ref } from 'vue';
 
@@ -26,8 +25,9 @@ const emit = defineEmits<{
   (e: 'pin-task', payload: { id: string; isPinned: boolean }): void;
 }>();
 
-// 狀態
-const isExpanded = ref(true);
+// --- 1. 修改點：將 isExpanded 的預設值改為 false ---
+// 目的：讓所有帶有子任務的項目在初始載入時，預設為收合狀態。
+const isExpanded = ref(false);
 
 // 方法
 function handleCheckboxChange(event: Event) {
@@ -50,7 +50,13 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
 </script>
 
 <template>
-  <tr class="task-row" :class="{ 'is-completed': task.isCompleted }">
+  <tr 
+    class="task-row" 
+    :class="{ 
+      'is-completed': task.isCompleted,
+      'is-main-task': props.level === 0  // --- 2. 新增點：為主任務動態添加 class ---
+    }"
+  >
     <td class="status-col">
       <input 
         type="checkbox" 
@@ -112,20 +118,35 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
   vertical-align: middle; 
 }
 
-/* --- 1. 修正點：將置中對齊的樣式加回來 --- */
-/* 為什麼：這樣可以確保每一行的勾選框、日期和釘選按鈕，都與表格標頭完美置中對齊。 */
+/* --- 3. 新增點：為主任務添加頂部邊框樣式 --- */
+/* 為什麼：為主任務增加一個更明顯的上邊框，
+   可以在視覺上將不同的主任務群組清晰地分隔開，
+   而子任務則因為沒有這個上邊框，會自然地 "歸屬於" 上方的主任務。
+   我們也為第一個主任務 `:first-child` 做了特殊處理，避免在表格最頂端出現多餘的線條。
+*/
+.task-row.is-main-task {
+  background-color: #527374a9;
+  border-top: 2px solid var(--bg-tertiary);
+}
+.task-row.is-main-task:first-child {
+  border-top: none;
+}
+/* 子任務的背景色可以稍微調暗，以作區分 */
+.task-row:not(.is-main-task) {
+  background-color: var(--bg-primary);
+}
+
+
 .status-col,
 .due-date-col,
 .actions-col {
   text-align: center;
 }
 
-
 .task-checkbox {
   width: 16px;
   height: 16px;
   cursor: pointer;
-  /* 讓勾選框也能垂直置中對齊 */
   vertical-align: middle;
 }
 
