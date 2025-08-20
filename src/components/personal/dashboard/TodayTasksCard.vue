@@ -1,36 +1,25 @@
 // 檔案位置: src/components/personal/dashboard/TodayTasksCard.vue
 <script setup lang="ts">
 import { onMounted, computed, ref } from 'vue';
-// --- 1. 新增點：匯入 useMainStore 和 PinnedTask 型別 ---
 import { useMainStore, type PinnedTask } from '../../../store';
 
-// --- 2. 新增點：獲取 mainStore 的實例 ---
 const mainStore = useMainStore();
 
-// --- 3. 修改點：移除本地狀態，改用 computed 從 store 讀取 ---
-// 目的：讓元件的顯示資料直接與 Pinia store 的狀態綁定。
 const displayedTasks = computed(() => {
-  // isExpanded 的邏輯保持不變，但資料來源變為 mainStore.pinnedTasks
   if (isExpanded.value) {
     return mainStore.pinnedTasks;
   }
   return mainStore.pinnedTasks.slice(0, 3);
 });
+// 註解：isLoading 狀態依然保留，用於初次載入時顯示提示。
 const isLoading = computed(() => mainStore.isLoadingPinnedTasks);
 
-// isExpanded 的本地狀態保持不變，因为它只屬於這個元件的 UI 行為
 const isExpanded = ref(false);
 
-// --- 4. 修改點：簡化 onMounted ---
-// 目的：元件掛載時，不再自己處理複雜的資料獲取邏輯，而是呼叫 store 的 action。
 onMounted(() => {
   mainStore.fetchPinnedTasks();
 });
 
-
-// --- 5. 修改點：更新 handleUpdateTask 和 handlePinTask ---
-// 目的：當使用者操作任務時，除了更新後端，還要再次觸發 store 的 action，
-//       以確保所有訂閱此狀態的元件（如 WelcomeHeader）都能收到最新資料。
 async function updateSourceMarkdown(task: PinnedTask, updates: { isCompleted?: boolean; isPinned?: boolean }) {
   try {
     const sourceList = await window.ipcRenderer.getTaskList(task.sourceListId);
@@ -60,20 +49,22 @@ async function updateSourceMarkdown(task: PinnedTask, updates: { isCompleted?: b
   }
 }
 
+// --- 1. 修改點：實作樂觀更新 ---
 async function handleUpdateTask(task: PinnedTask, isCompleted: boolean) {
+  // 步驟 1：立即更新 Pinia Store 中的狀態，UI 會瞬間響應。
+  mainStore.updatePinnedTaskStatus(task.id, isCompleted);
+  // 步驟 2：在背景執行實際的檔案儲存操作，此操作不再影響 UI。
   await updateSourceMarkdown(task, { isCompleted });
-  // 重新獲取全局釘選任務狀態
-  mainStore.fetchPinnedTasks();
 }
 
 async function handlePinTask(task: PinnedTask) {
+  // 步驟 1：在背景執行取消釘選的儲存操作。
   await updateSourceMarkdown(task, { isPinned: false });
-  // 重新獲取全局釘選任務狀態
+  // 步驟 2：儲存成功後，重新從後端獲取完整的釘選列表。
+  // 為什麼：取消釘選是一個「移除」操作，重新獲取列表是確保 UI 正確性的最簡單方式。
+  //         因為這不是高頻操作，所以這裡的短暫 loading 是可以接受的。
   mainStore.fetchPinnedTasks();
 }
-
-// --- 6. 刪除點：移除本地的 findPinnedTasks 函式 ---
-// 因為這個邏輯已經被遷移到 Pinia store 的 fetchPinnedTasks action 中了。
 </script>
 
 <template>
@@ -134,6 +125,7 @@ async function handlePinTask(task: PinnedTask) {
 </template>
 
 <style scoped>
+/* (樣式保持不變) */
 .board-note.tasks-card {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);

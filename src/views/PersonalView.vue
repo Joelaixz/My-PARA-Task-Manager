@@ -19,7 +19,8 @@ import WelcomeHeader from '../components/personal/WelcomeHeader.vue';
 .personal-view-container {
   display: flex;
   flex-direction: column;
-  overflow-y: auto; /* 允許內容超出時垂直滾動 */
+  /* --- 恢復點：讓整個容器可以滾動 --- */
+  overflow-y: auto;
   background-color: var(--bg-primary);
   padding: 1.5rem;
   gap: 1.5rem;

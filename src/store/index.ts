@@ -2,7 +2,6 @@
 import { defineStore } from 'pinia'
 import path from 'path-browserify'
 
-// --- 1. 新增點：定義主題型別 ---
 export type Theme = 'light' | 'dark';
 
 // --- (其他型別定義保持不變) ---
@@ -23,7 +22,6 @@ export type PersonalViewType = '今日焦點' | '任務清單' | '未來日誌';
 
 export const useMainStore = defineStore('main', {
   state: () => ({
-    // --- 2. 新增點：建立儲存主題的狀態 ---
     theme: 'dark' as Theme,
     sidebarMode: 'files' as SidebarMode,
     previousSidebarMode: null as SidebarMode | null,
@@ -40,25 +38,28 @@ export const useMainStore = defineStore('main', {
     },
   },
   actions: {
-    // --- 3. 新增點：建立初始化主題的 Action ---
-    // 目的：在應用程式啟動時，從後端讀取儲存的主題偏好設定。
     async initTheme() {
-      // 註解：我們假設 preload.ts 中會有一個 'get-theme' 的 IPC 通道
       const savedTheme = await window.ipcRenderer.invoke('get-theme') as Theme | null;
       if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
         this.theme = savedTheme;
       }
-      // 為什麼：將主題狀態應用到 HTML 的根元素上，這是觸發 CSS 變數切換的關鍵。
       document.documentElement.setAttribute('data-theme', this.theme);
     },
-
-    // --- 4. 新增點：建立切換主題的 Action ---
-    // 目的：提供一個統一的方法來切換主題，並將結果持久化。
     async toggleTheme() {
       this.theme = this.theme === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', this.theme);
-      // 註解：我們假設 preload.ts 中會有一個 'set-theme' 的 IPC 通道
       await window.ipcRenderer.invoke('set-theme', this.theme);
+    },
+
+    // --- 1. 新增點：建立樂觀更新的 Action ---
+    // 目的：提供一個輕量級的方法來即時更新單一任務的狀態，避免重新載入整個列表。
+    updatePinnedTaskStatus(taskId: string, isCompleted: boolean) {
+      // 為什麼：直接在前端 store 中尋找並更新對應的任務。
+      // 這樣做反應速度最快，UI 不會有任何延遲或閃爍。
+      const task = this.pinnedTasks.find(t => t.id === taskId);
+      if (task) {
+        task.isCompleted = isCompleted;
+      }
     },
 
     setSidebarMode(mode: SidebarMode) {
