@@ -2,9 +2,10 @@
 import { defineStore } from 'pinia'
 import path from 'path-browserify'
 
-// --- 1. 新增點：定義共享的任務型別 ---
-// 目的：讓 store 和各個元件對資料結構有統一的認知。
-// 註解：從 TodayTasksCard.vue 提取並擴充 ParsedTask 型別。
+// --- 1. 新增點：定義主題型別 ---
+export type Theme = 'light' | 'dark';
+
+// --- (其他型別定義保持不變) ---
 export interface ParsedTask {
   id: string;
   content: string;
@@ -13,37 +14,53 @@ export interface ParsedTask {
   dueDate: string | null;
   children: ParsedTask[];
 }
-
 export interface PinnedTask extends ParsedTask {
   sourceList: string;
   sourceListId: number;
 }
-
 export type SidebarMode = 'files' | 'personal' | 'projects' | 'areas' | 'resources' | 'archives';
 export type PersonalViewType = '今日焦點' | '任務清單' | '未來日誌';
 
 export const useMainStore = defineStore('main', {
   state: () => ({
+    // --- 2. 新增點：建立儲存主題的狀態 ---
+    theme: 'dark' as Theme,
     sidebarMode: 'files' as SidebarMode,
     previousSidebarMode: null as SidebarMode | null,
     activePersonalView: '今日焦點' as PersonalViewType,
-    // --- 2. 新增點：建立儲存釘選任務的狀態 ---
     pinnedTasks: [] as PinnedTask[],
     isLoadingPinnedTasks: false,
   }),
-  // --- 3. 新增點：建立計算屬性 (Getters) ---
-  // 目的：提供給 WelcomeHeader.vue 直接使用的計算結果。
   getters: {
     totalPinnedTasks: (state): number => {
-      // 為什麼：直接回傳陣列長度，簡單高效。
       return state.pinnedTasks.length;
     },
     completedPinnedTasks: (state): number => {
-      // 為什麼：使用 filter().length 來計算已完成的任務數量。
       return state.pinnedTasks.filter(task => task.isCompleted).length;
     },
   },
   actions: {
+    // --- 3. 新增點：建立初始化主題的 Action ---
+    // 目的：在應用程式啟動時，從後端讀取儲存的主題偏好設定。
+    async initTheme() {
+      // 註解：我們假設 preload.ts 中會有一個 'get-theme' 的 IPC 通道
+      const savedTheme = await window.ipcRenderer.invoke('get-theme') as Theme | null;
+      if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
+        this.theme = savedTheme;
+      }
+      // 為什麼：將主題狀態應用到 HTML 的根元素上，這是觸發 CSS 變數切換的關鍵。
+      document.documentElement.setAttribute('data-theme', this.theme);
+    },
+
+    // --- 4. 新增點：建立切換主題的 Action ---
+    // 目的：提供一個統一的方法來切換主題，並將結果持久化。
+    async toggleTheme() {
+      this.theme = this.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', this.theme);
+      // 註解：我們假設 preload.ts 中會有一個 'set-theme' 的 IPC 通道
+      await window.ipcRenderer.invoke('set-theme', this.theme);
+    },
+
     setSidebarMode(mode: SidebarMode) {
       if (mode === 'files' && this.sidebarMode !== 'files') {
         this.previousSidebarMode = this.sidebarMode;
@@ -59,15 +76,11 @@ export const useMainStore = defineStore('main', {
     setActivePersonalView(view: PersonalViewType) {
       this.activePersonalView = view;
     },
-    // --- 4. 新增點：建立獲取釘選任務的 Action ---
-    // 目的：將獲取和解析釘選任務的邏輯集中到 store 中，避免重複程式碼。
     async fetchPinnedTasks() {
       this.isLoadingPinnedTasks = true;
       try {
         const allLists = await window.ipcRenderer.getTaskLists();
         let allPinnedTasks: PinnedTask[] = [];
-
-        // 遞迴尋找釘選任務的輔助函式
         const findPinned = (tasks: ParsedTask[], sourceName: string, sourceId: number): PinnedTask[] => {
           let results: PinnedTask[] = [];
           for (const task of tasks) {
@@ -80,7 +93,6 @@ export const useMainStore = defineStore('main', {
           }
           return results;
         };
-
         for (const list of allLists) {
           if (list.content) {
             const parsed = await window.ipcRenderer.parseMarkdownTasks(list.content);
@@ -91,7 +103,7 @@ export const useMainStore = defineStore('main', {
         this.pinnedTasks = allPinnedTasks;
       } catch (error) {
         console.error("Failed to load pinned tasks in store:", error);
-        this.pinnedTasks = []; // 發生錯誤時清空
+        this.pinnedTasks = [];
       } finally {
         this.isLoadingPinnedTasks = false;
       }

@@ -118,6 +118,10 @@ app.whenReady().then(() => {
   ipcMain.handle('get-last-path-for-mode', (event, mode: string) => databaseService.getLastPathForMode(db, mode));
   ipcMain.handle('set-last-path-for-mode', (event, { mode, path }: { mode: string, path: string }) => databaseService.setLastPathForMode(db, mode, path));
 
+  // --- 1. 新增點：建立讀取與儲存主題的 IPC 通道 ---
+  ipcMain.handle('get-theme', () => databaseService.getTheme(db));
+  ipcMain.handle('set-theme', (event, theme: string) => databaseService.setTheme(db, theme));
+
   // 隨手筆記 (Scratchpad) (保持不變)
   ipcMain.handle('get-scratchpad-notes', () => databaseService.getAllScratchpadNotes(db))
   ipcMain.handle('add-scratchpad-note', (event, content: string) => databaseService.addScratchpadNote(db, content))
@@ -130,8 +134,6 @@ app.whenReady().then(() => {
   ipcMain.handle('create-task-list', (event, name: string) => databaseService.createTaskList(db, name))
   ipcMain.handle('update-task-list-content', (event, id: number, content: string) => databaseService.updateTaskListContent(db, id, content))
   ipcMain.handle('delete-task-list', (event, id: number) => databaseService.deleteTaskList(db, id))
-  // --- 新增點：建立更新排序的 IPC 通道 ---
-  // 目的：接收前端傳來的 ID 陣列，並呼叫後端服務更新資料庫。
   ipcMain.handle('update-task-lists-order', (event, orderedIds: number[]) => {
     return databaseService.updateTaskListsOrder(db, orderedIds);
   });
