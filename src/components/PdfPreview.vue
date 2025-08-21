@@ -60,7 +60,6 @@ async function renderAllPages() {
 
     await page.render({
       canvasContext: context,
-      canvas: canvas,
       viewport: viewport
     }).promise;
   }

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-// --- 1. 新增點：匯入 watch 和 onMounted ---
 import { watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import SidebarView from './SidebarView.vue'
@@ -9,12 +8,9 @@ import { useMainStore, type SidebarMode } from '../store';
 const mainStore = useMainStore();
 const route = useRoute();
 
-// --- 2. 新增點：在元件掛載時初始化主題 ---
-// 目的：確保應用程式啟動時，能從後端讀取並應用使用者儲存的主題設定。
 onMounted(() => {
   mainStore.initTheme();
 });
-
 
 /**
  * 目的：根據路由的頂層路由名稱，決定側邊欄應該處於何種模式。
@@ -71,12 +67,13 @@ watch(() => route.name, () => {
     <SidebarView />
 
     <main class="main-content">
-      <RouterView />
+      <RouterView :key="route.fullPath" />
     </main>
   </div>
 </template>
 
 <style scoped>
+/* (樣式保持不變) */
 .main-layout {
   display: flex;
   height: 100vh;
@@ -97,18 +94,17 @@ watch(() => route.name, () => {
   border-right: 1px solid var(--border-color);
 }
 
-/* --- 4. 新增點：主題切換按鈕的樣式 --- */
 .theme-toggle-button {
   background: none;
-  border: 1px solid transparent; /* 預留邊框空間，避免 hover 時跳動 */
+  border: 1px solid transparent;
   color: var(--text-secondary);
   font-size: 1.5rem;
   padding: 0.5rem;
   border-radius: 8px;
   cursor: pointer;
-  margin-bottom: 1.5rem; /* 與下方導航按鈕間距一致 */
+  margin-bottom: 1.5rem;
   transition: background-color 0.3s, color 0.3s, border-color 0.3s;
-  line-height: 1; /* 確保 icon 垂直置中 */
+  line-height: 1;
 }
 
 .theme-toggle-button:hover {
@@ -116,7 +112,6 @@ watch(() => route.name, () => {
   border-color: var(--border-color);
   color: var(--text-primary);
 }
-
 
 .l1-sidebar a {
   color: var(--text-secondary);
@@ -134,7 +129,6 @@ watch(() => route.name, () => {
   color: var(--text-primary);
 }
 
-/* 修正 CSS 選擇器 */
 .l1-sidebar a.router-link-active {
   background-color: var(--accent-color);
   color: var(--text-accent-contrast);

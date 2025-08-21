@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { defineProps } from 'vue'
+// --- 1. 新增點：匯入 useRouter ---
+import { useRouter } from 'vue-router'
 import path from 'path-browserify'
 import { useFileStore } from '../../store'
 
@@ -8,7 +10,6 @@ interface FileEntry {
   path: string;
   isDirectory: boolean;
   children?: FileEntry[];
-  // isExpanded 屬性雖然還存在於介面中，但我們不再直接依賴它來渲染
   isExpanded?: boolean;
 }
 
@@ -16,9 +17,9 @@ const props = defineProps<{
   entries: FileEntry[]
 }>()
 
-// --- 1. 取得 file store 的實例 ---
-// 目的：讓元件可以直接存取和操作共享的狀態。
 const fileStore = useFileStore()
+// --- 2. 新增點：取得 router 實例 ---
+const router = useRouter()
 
 function getIconForFile(fileName: string): string {
   const extension = fileName.split('.').pop()?.toLowerCase();
@@ -38,12 +39,21 @@ function getIconForFile(fileName: string): string {
  */
 function handleEntryClick(entry: FileEntry) {
   if (entry.isDirectory) {
-    // --- 2. 修改：不再直接修改 entry 物件的狀態 ---
-    // 而是呼叫 store 的 action 來集中管理狀態變更。
     fileStore.toggleFolderExpansion(entry.path);
     fileStore.selectFolder(entry.path);
   } else {
-    fileStore.selectFile(entry.path)
+    // --- 3. 修改點：使用路由來處理檔案選擇和刷新 ---
+    if (fileStore.selectedFilePath === entry.path) {
+      // 如果點擊的是已選中的檔案，則在路由後面附加一個時間戳查詢參數
+      // 這會改變 route.fullPath，從而觸發 RouterView 的 key 變化，強制重新渲染
+      router.push({ path: '/view', query: { t: Date.now() } });
+    } else {
+      // 如果是選擇新檔案，則正常導航
+      fileStore.selectFile(entry.path);
+      router.push('/view');
+    }
+    
+    // 選中檔案的同時，也將其所在的資料夾設為選中狀態
     fileStore.selectFolder(path.dirname(entry.path));
   }
 }
@@ -80,6 +90,7 @@ function handleEntryClick(entry: FileEntry) {
 </template>
 
 <style scoped>
+/* (樣式保持不變) */
 .file-tree-container {
   width: max-content;
   min-width: 100%;

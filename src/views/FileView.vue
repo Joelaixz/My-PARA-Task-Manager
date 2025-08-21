@@ -67,6 +67,9 @@ watch(() => fileStore.selectedFilePath, (newPath) => {
   }
 })
 
+// --- 1. 復原點：移除對 fileReloadKey 的監聽 ---
+// watch(() => fileStore.fileReloadKey, ...);
+
 // 確保當元件第一次被掛載時，也能正確載入內容。
 onMounted(() => {
   if (fileStore.selectedFilePath) {

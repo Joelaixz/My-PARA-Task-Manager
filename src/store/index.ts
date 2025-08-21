@@ -50,18 +50,12 @@ export const useMainStore = defineStore('main', {
       document.documentElement.setAttribute('data-theme', this.theme);
       await window.ipcRenderer.invoke('set-theme', this.theme);
     },
-
-    // --- 1. 新增點：建立樂觀更新的 Action ---
-    // 目的：提供一個輕量級的方法來即時更新單一任務的狀態，避免重新載入整個列表。
     updatePinnedTaskStatus(taskId: string, isCompleted: boolean) {
-      // 為什麼：直接在前端 store 中尋找並更新對應的任務。
-      // 這樣做反應速度最快，UI 不會有任何延遲或閃爍。
       const task = this.pinnedTasks.find(t => t.id === taskId);
       if (task) {
         task.isCompleted = isCompleted;
       }
     },
-
     setSidebarMode(mode: SidebarMode) {
       if (mode === 'files' && this.sidebarMode !== 'files') {
         this.previousSidebarMode = this.sidebarMode;
@@ -112,7 +106,7 @@ export const useMainStore = defineStore('main', {
   },
 })
 
-// FileStore 保持不變
+// --- 1. 復原點：移除 fileReloadKey 相關的程式碼 ---
 export const useFileStore = defineStore('file', {
   state: (): { 
     selectedFilePath: string | null;
