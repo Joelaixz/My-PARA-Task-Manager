@@ -2,17 +2,18 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
 contextBridge.exposeInMainWorld('ipcRenderer', {
-  // --- (invoke 保持不變，但為了清晰，我們將它移到前面) ---
   invoke: (...args: Parameters<typeof ipcRenderer.invoke>) => {
     const [channel, ...omit] = args;
     return ipcRenderer.invoke(channel, ...omit);
   },
   
-  // --- 1. 新增點：將主題設定的函式橋接給前端 ---
+  // --- 3. 新增點：將新的複製功能橋接給前端 ---
+  copyTextToClipboard: (text: string): Promise<boolean> => ipcRenderer.invoke('copy-text-to-clipboard', text),
+
+  // Theme
   getTheme: (): Promise<string | null> => ipcRenderer.invoke('get-theme'),
   setTheme: (theme: string): Promise<void> => ipcRenderer.invoke('set-theme', theme),
 
-  // --- (其他 API 保持不變) ---
   // 檔案操作
   getFiles: (directoryPath?: string): Promise<any> => ipcRenderer.invoke('get-files', directoryPath),
   readFile: (filePath: string): Promise<any> => ipcRenderer.invoke('read-file', filePath),
@@ -43,7 +44,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   // Markdown 解析
   parseMarkdownTasks: (markdownContent: string): Promise<any[]> => ipcRenderer.invoke('parse-markdown-tasks', { content: markdownContent }),
 
-  // 註解：on, off, send 這些單向或監聽的 API 我們暫時用不到，但保留著以備不時之需
+  // on, off, send
   on: (...args: Parameters<typeof ipcRenderer.on>) => { const [channel, listener] = args; return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args)) },
   off: (...args: Parameters<typeof ipcRenderer.off>) => { const [channel, ...omit] = args; return ipcRenderer.off(channel, ...omit) },
   send: (...args: Parameters<typeof ipcRenderer.send>) => { const [channel, ...omit] = args; return ipcRenderer.send(channel, ...omit) },

@@ -1,5 +1,6 @@
 // 檔案位置: electron/main.ts
-import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
+// --- 1. 新增點：從 electron 匯入 clipboard ---
+import { app, BrowserWindow, ipcMain, session, shell, clipboard } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -35,7 +36,6 @@ const db = knex({
 let win: BrowserWindow | null
 
 function createWindow() {
-  // ... (createWindow 函式內容保持不變)
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     width: 1600,
@@ -105,30 +105,32 @@ app.whenReady().then(() => {
     })
   })
 
-  // 檔案操作 (保持不變)
+  // --- 2. 新增點：建立一個處理複製文字請求的 IPC 通道 ---
+  ipcMain.handle('copy-text-to-clipboard', (event, text: string) => {
+    clipboard.writeText(text);
+    return true; // 表示成功
+  });
+
+  // --- (其他 IPC 通道保持不變) ---
   ipcMain.handle('get-files', (event, directoryPath?: string) => fileService.getFiles(win, directoryPath))
   ipcMain.handle('read-file', (event, filePath: string) => fileService.readFile(filePath))
   ipcMain.handle('save-file', (event, filePath: string, content: string) => fileService.saveFile(filePath, content))
   ipcMain.handle('create-file', (event, parentDir: string, fileName: string, rootPath: string) => fileService.createFile(parentDir, fileName, rootPath))
   ipcMain.handle('create-folder', (event, parentDir: string, folderName: string, rootPath: string) => fileService.createFolder(parentDir, folderName, rootPath))
   
-  // 資料庫操作
+  ipcMain.handle('get-theme', () => databaseService.getTheme(db));
+  ipcMain.handle('set-theme', (event, theme: string) => databaseService.setTheme(db, theme));
+  
   ipcMain.handle('get-mit', () => databaseService.getMit(db))
   ipcMain.handle('set-mit', (event, content: string) => databaseService.setMit(db, content))
   ipcMain.handle('get-last-path-for-mode', (event, mode: string) => databaseService.getLastPathForMode(db, mode));
   ipcMain.handle('set-last-path-for-mode', (event, { mode, path }: { mode: string, path: string }) => databaseService.setLastPathForMode(db, mode, path));
 
-  // --- 1. 新增點：建立讀取與儲存主題的 IPC 通道 ---
-  ipcMain.handle('get-theme', () => databaseService.getTheme(db));
-  ipcMain.handle('set-theme', (event, theme: string) => databaseService.setTheme(db, theme));
-
-  // 隨手筆記 (Scratchpad) (保持不變)
   ipcMain.handle('get-scratchpad-notes', () => databaseService.getAllScratchpadNotes(db))
   ipcMain.handle('add-scratchpad-note', (event, content: string) => databaseService.addScratchpadNote(db, content))
   ipcMain.handle('update-scratchpad-note', (event, id: number, content: string) => databaseService.updateScratchpadNote(db, id, content))
   ipcMain.handle('delete-scratchpad-note', (event, id: number) => databaseService.deleteScratchpadNote(db, id))
   
-  // 任務清單 (Task Lists)
   ipcMain.handle('get-task-lists', () => databaseService.getTaskLists(db))
   ipcMain.handle('get-task-list', (event, id: number) => databaseService.getTaskList(db, id))
   ipcMain.handle('create-task-list', (event, name: string) => databaseService.createTaskList(db, name))
@@ -138,7 +140,6 @@ app.whenReady().then(() => {
     return databaseService.updateTaskListsOrder(db, orderedIds);
   });
 
-  // Markdown 解析器 (保持不變)
   ipcMain.handle('parse-markdown-tasks', (event, { content }: { content: string }) => {
     const result = parseMarkdownToTasks(content);
     return result;

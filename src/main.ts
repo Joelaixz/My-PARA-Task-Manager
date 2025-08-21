@@ -1,14 +1,16 @@
+// 檔案位置: src/main.ts
 import { createApp } from 'vue'
-import { createPinia } from 'pinia' // 引入 createPinia
-import router from './router' // 引入 router
+import { createPinia } from 'pinia'
+import router from './router'
 import './style.css'
 import App from './App.vue'
+import 'pdfjs-dist/web/pdf_viewer.css';
 
-const pinia = createPinia() // 建立 Pinia 實例
+const pinia = createPinia()
 const app = createApp(App)
 
-app.use(pinia) // 使用 Pinia
-app.use(router) // 使用 Vue Router
+app.use(pinia)
+app.use(router)
 
 app.mount('#app').$nextTick(() => {
   window.ipcRenderer.on('main-process-message', (_event, message) => {

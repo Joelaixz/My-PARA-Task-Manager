@@ -1,26 +1,35 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import * as pdfjsLib from 'pdfjs-dist'
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker?url'
+import { ref, onMounted, onUnmounted, watch } from 'vue';
+import * as pdfjsLib from 'pdfjs-dist';
+import { PDFViewer, EventBus, PDFLinkService } from 'pdfjs-dist/web/pdf_viewer.mjs';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker?url';
 
 const props = defineProps<{
   content: {
     base64: string;
     mimeType: string;
   }
-}>()
+}>();
 
-// --- Refs ---
-const pdfContainerRef = ref<HTMLDivElement | null>(null)
-const isLoading = ref(true)
-const errorMessage = ref<string | null>(null)
-// --- 1. 新增：用於控制縮放比例的響應式變數 ---
-const scale = ref(1.5) // 預設放大 150%
+const pdfContainerRef = ref<HTMLDivElement | null>(null);
+const viewerRef = ref<HTMLDivElement | null>(null);
+let pdfViewer: PDFViewer | null = null;
+let eventBus: EventBus | null = null;
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
+const isLoading = ref(true);
+const errorMessage = ref<string | null>(null);
+const scale = ref(1);
 
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binaryString = atob(base64);
+const contextMenu = ref({
+  show: false,
+  x: 0,
+  y: 0,
+});
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+function base64ToUint8Array(): Uint8Array {
+  const binaryString = atob(props.content.base64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
@@ -29,54 +38,89 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-// --- 2. 重構：讓 renderPdf 函式可以被重複呼叫 ---
-//    我們將 PDF 文件物件儲存起來，避免重複解析。
-let pdfDocument: pdfjsLib.PDFDocumentProxy | null = null;
-
-async function renderAllPages() {
-  if (!pdfContainerRef.value || !pdfDocument) return;
-
-  isLoading.value = true;
-  pdfContainerRef.value.innerHTML = ''; // 清空舊的渲染
-
-  const pixelRatio = window.devicePixelRatio || 1;
-  const renderScale = scale.value * pixelRatio;
-
-  for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
-    const page = await pdfDocument.getPage(pageNum);
-    const viewport = page.getViewport({ scale: renderScale });
-    
-    const canvas = document.createElement('canvas');
-    canvas.className = 'pdf-page-canvas';
-    const context = canvas.getContext('2d');
-    if (!context) continue;
-
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-    canvas.style.height = `${viewport.height / pixelRatio}px`;
-    canvas.style.width = `${viewport.width / pixelRatio}px`;
-
-    pdfContainerRef.value.appendChild(canvas);
-
-    await page.render({
-      canvasContext: context,
-      viewport: viewport
-    }).promise;
+function handleContextMenu(event: MouseEvent) {
+  const selection = window.getSelection();
+  if (selection && selection.toString().length > 0) {
+    event.preventDefault();
+    contextMenu.value.show = true;
+    contextMenu.value.x = event.clientX;
+    contextMenu.value.y = event.clientY;
   }
-  isLoading.value = false;
+}
+
+function closeContextMenu() {
+  contextMenu.value.show = false;
+}
+
+function executeCopy() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    closeContextMenu();
+    return;
+  }
+
+  let pureText = '';
+  for (let i = 0; i < selection.rangeCount; i++) {
+    pureText += selection.getRangeAt(i).cloneContents().textContent || '';
+  }
+  
+  if (pureText.length === 0) {
+    closeContextMenu();
+    return;
+  }
+
+  const cleanedText = pureText.replace(/\s+/g, ' ');
+
+  try {
+    window.ipcRenderer.copyTextToClipboard(cleanedText);
+  } catch (error) {
+    console.error('透過 IPC 複製文字失敗:', error);
+  }
+
+  closeContextMenu();
+}
+
+// --- 1. 新增點：建立一個給 Ctrl+C 使用的鍵盤事件處理函式 ---
+function handleKeyDown(event: KeyboardEvent) {
+  // 檢查是否為 Ctrl+C (Windows/Linux) 或 Cmd+C (Mac)
+  if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+    const selection = window.getSelection();
+    // 確保選取範圍是在我們的 PDF 檢視器內部
+    if (selection && viewerRef.value?.contains(selection.anchorNode)) {
+      event.preventDefault();
+      executeCopy(); // 呼叫與右鍵選單相同的複製函式
+    }
+  }
 }
 
 async function loadAndRenderPdf() {
-  if (!props.content.base64) return;
-  
+  if (!viewerRef.value || !pdfContainerRef.value) return;
   isLoading.value = true;
   errorMessage.value = null;
-  pdfDocument = null; // 重置
 
+  if (pdfViewer) {
+    pdfViewer.cleanup();
+    pdfViewer.setDocument(null as any);
+  }
   try {
-    const pdfData = base64ToUint8Array(props.content.base64);
-    pdfDocument = await pdfjsLib.getDocument({ data: pdfData }).promise;
-    await renderAllPages(); // 首次渲染
+    const pdfData = base64ToUint8Array();
+    const pdfDocument = await pdfjsLib.getDocument({ data: pdfData }).promise;
+    eventBus = new EventBus();
+    const linkService = new PDFLinkService({ eventBus });
+    pdfViewer = new PDFViewer({
+      container: pdfContainerRef.value,
+      viewer: viewerRef.value,
+      eventBus,
+      linkService,
+      textLayerMode: 2,
+      annotationMode: 2,
+    });
+    linkService.setViewer(pdfViewer);
+    pdfViewer.setDocument(pdfDocument);
+    eventBus.on('pagesinit', () => {
+      isLoading.value = false;
+      pdfViewer!.currentScaleValue = String(scale.value);
+    });
   } catch (error: any) {
     console.error('Error loading PDF:', error);
     errorMessage.value = `載入 PDF 時發生錯誤: ${error.message || '未知錯誤'}`;
@@ -84,24 +128,35 @@ async function loadAndRenderPdf() {
   }
 }
 
-// --- 3. 新增：縮放控制函式 ---
+function updateZoom() {
+  if (pdfViewer) {
+    pdfViewer.currentScaleValue = String(scale.value);
+  }
+}
 function zoomIn() {
   scale.value = parseFloat((scale.value + 0.1).toFixed(2));
 }
-
 function zoomOut() {
-  // 避免縮太小
   if (scale.value > 0.2) {
     scale.value = parseFloat((scale.value - 0.1).toFixed(2));
   }
 }
 
-// --- 4. 修改：監聽 props 和 scale 的變化 ---
-onMounted(loadAndRenderPdf);
-// 當檔案內容改變時，重新載入並渲染
+// --- 2. 修改點：綁定和解綁 keydown 事件監聽器 ---
+onMounted(() => {
+  loadAndRenderPdf();
+  window.addEventListener('click', closeContextMenu);
+  window.addEventListener('keydown', handleKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('click', closeContextMenu);
+  window.removeEventListener('keydown', handleKeyDown);
+  pdfViewer?.cleanup();
+})
+
 watch(() => props.content, loadAndRenderPdf, { deep: true });
-// 當縮放比例改變時，僅重新渲染頁面
-watch(scale, renderAllPages);
+watch(scale, updateZoom);
 
 </script>
 
@@ -110,10 +165,26 @@ watch(scale, renderAllPages);
     <div v-if="isLoading" class="feedback-panel">
       <p>正在渲染 PDF...</p>
     </div>
-    <div v-else-if="errorMessage" class="feedback-panel error">
+    <div v-if="errorMessage" class="feedback-panel error">
       <p>{{ errorMessage }}</p>
     </div>
-    <div ref="pdfContainerRef" class="pdf-pages-host"></div>
+    
+    <div 
+      ref="pdfContainerRef" 
+      class="pdf-host-container"
+      @contextmenu="handleContextMenu"
+    >
+      <div ref="viewerRef" class="pdfViewer"></div>
+    </div>
+
+    <div 
+      v-if="contextMenu.show" 
+      class="context-menu"
+      :style="{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }"
+      @click.stop
+    >
+      <button @click="executeCopy">複製</button>
+    </div>
 
     <div class="zoom-controls">
       <button @click="zoomOut" title="縮小">-</button>
@@ -124,35 +195,42 @@ watch(scale, renderAllPages);
 </template>
 
 <style scoped>
+/* (樣式保持不變) */
 .pdf-preview-container {
-  /* 新增 position: relative; 讓絕對定位的子元素有所依據 */
   position: relative;
   width: 100%;
   height: 100%;
-  overflow-y: auto;
-  padding: 1rem 0;
-  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.pdf-pages-host {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
+.pdf-host-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
 }
 
-.pdf-page-canvas {
+.pdf-host-container :deep(.pdfViewer .page) {
   border: 1px solid var(--border-color);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  margin-bottom: 1rem;
 }
 
 .feedback-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100%;
-  color: #d4d4d4;
+  color: var(--text-secondary);
   font-size: 1rem;
+  z-index: 10;
+  background-color: var(--bg-primary);
 }
 
 .feedback-panel.error {
@@ -163,20 +241,46 @@ watch(scale, renderAllPages);
   word-break: break-all;
 }
 
-/* --- 6. 新增：縮放控制面板的樣式 --- */
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 4px;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  padding: 8px 16px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.context-menu button:hover {
+  background-color: var(--accent-color);
+  color: var(--text-accent-contrast);
+}
+
 .zoom-controls {
-  position: fixed; /* 固定在視窗右下角 */
+  position: fixed;
   bottom: 20px;
   right: 30px;
-  background-color: rgba(45, 45, 45, 0.8); /* 半透明背景 */
-  backdrop-filter: blur(5px); /* 毛玻璃效果 */
+  background-color: rgba(45, 45, 45, 0.8);
+  backdrop-filter: blur(5px);
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   padding: 4px;
   z-index: 100;
-  user-select: none; /* 防止選取文字 */
+  user-select: none;
 }
 
 .zoom-controls button {
@@ -203,7 +307,7 @@ watch(scale, renderAllPages);
   font-size: 14px;
   font-weight: 500;
   padding: 0 12px;
-  min-width: 50px; /* 確保寬度不會因數字變化而跳動 */
+  min-width: 50px;
   text-align: center;
 }
 </style>
