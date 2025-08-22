@@ -11,12 +11,12 @@ import TodayTasksCard from './dashboard/TodayTasksCard.vue';
 
 const urgentCountdown = ref({
   targetDate: new Date(new Date().getTime() + 3 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000), 
-  title: '「專案B」第一階段交付',
+  title: '待開發',
 });
 
 const futureReminder = ref({
-  date: '8月25日',
-  event: '參加技術分享會',
+  date: '1月1日',
+  event: '待開發',
 });
 
 // --- 倒數計時器邏輯 ---
@@ -110,9 +110,9 @@ onUnmounted(() => {
 /* 倒數計時卡片 (暫時保留，未來也應元件化) */
 .countdown-card {
   grid-column: span 3;
-  border-left: 4px solid var(--color-projects);
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
+  border-left: 4px solid var(--color-projects);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   display: flex;
@@ -135,9 +135,9 @@ onUnmounted(() => {
 /* 提醒卡片 (暫時保留，未來也應元件化) */
 .reminder-card {
   grid-column: span 3;
-  border-left: 4px solid var(--color-areas);
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
+  border-left: 4px solid var(--color-areas);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   display: flex;
