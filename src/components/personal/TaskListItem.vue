@@ -145,11 +145,9 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
   vertical-align: middle;
 }
 
-/* 4. 簡化點：移除 display:flex 和 align-items */
 .task-content-wrapper {
-  /* display: flex; align-items: center; */ /* <= 已由 .flex-center 取代 */
   gap: 6px;
-  /* justify-content 預設為 flex-start，符合需求，不需額外設定 */
+  justify-content: start;
 }
 
 .toggle-arrow {
