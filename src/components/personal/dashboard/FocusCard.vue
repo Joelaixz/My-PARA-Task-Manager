@@ -66,9 +66,10 @@ function cancelEditing() {
   <div class="board-note focus-card">
     <h2 class="note-title">📌 今日首要目標 (MIT)</h2>
 
+    <!-- 1. 修改點：整合 .interactive-item 和 .rounded-sm -->
     <p 
       v-if="!isEditing" 
-      class="focus-text"
+      class="focus-text interactive-item rounded-sm"
       @click="startEditing"
       title="點擊以編輯"
     >
@@ -114,25 +115,21 @@ function cancelEditing() {
   border-left: 4px solid var(--color-personal);
 }
 
-/* 顯示模式的文字樣式 */
+/* 2. 簡化點：移除已被 .interactive-item 取代的樣式 */
 .focus-text {
   font-size: 1.1rem;
   color: var(--text-primary);
   line-height: 1.6;
   margin: 0;
   flex-grow: 1;
-  cursor: pointer;
-  white-space: pre-wrap; /* 讓儲存的換行符 \n 生效 */
+  white-space: pre-wrap;
   word-break: break-word;
-  border-radius: 4px;
-  /* 增加內邊距，不僅擴大點擊區域，也提供視覺呼吸空間 */
   padding: 0.5rem;
-  margin: -0.5rem; /* 負 margin 用來抵銷 padding，使整體佈局不變 */
-  transition: background-color 0.2s;
+  margin: -0.5rem;
+  /* cursor, border-radius, transition 已被取代 */
 }
-.focus-text:hover {
-  background-color: var(--bg-tertiary);
-}
+/* hover 效果已由 .interactive-item:hover 提供 */
+
 
 /* 編輯模式的容器 */
 .editing-wrapper {

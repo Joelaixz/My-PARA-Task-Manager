@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:frontend": "vite",
     "build": "vue-tsc && vite build && electron-builder",
     "preview": "vite preview",
     "postinstall": "electron-builder install-app-deps"

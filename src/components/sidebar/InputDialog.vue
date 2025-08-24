@@ -103,9 +103,10 @@ onMounted(() => {
             </select>
           </div>
           
+          <!-- 1. 修改點：為按鈕添加 .button-reset, .rounded-sm -->
           <div class="dialog-actions">
-            <button type="button" class="btn btn-secondary" @click="handleCancel">取消</button>
-            <button type="submit" class="btn btn-primary">確認</button>
+            <button type="button" class="btn btn-secondary button-reset rounded-sm" @click="handleCancel">取消</button>
+            <button type="submit" class="btn btn-primary button-reset rounded-sm">確認</button>
           </div>
         </form>
       </div>
@@ -144,7 +145,6 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-/* --- 6. 新增樣式 --- */
 .input-group {
   display: flex;
   margin-bottom: 1.5rem;
@@ -157,14 +157,13 @@ onMounted(() => {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   box-sizing: border-box;
-  /* 為了配合下拉選單，只保留左側圓角 */
   border-radius: 4px 0 0 4px;
 }
 .dialog-input:focus {
   outline: none;
   border-color: var(--accent-color);
   box-shadow: 0 0 0 2px var(--accent-color-muted);
-  z-index: 1; /* 確保 focus 效果不會被蓋住 */
+  z-index: 1;
 }
 .extension-select {
   flex-shrink: 0;
@@ -181,7 +180,6 @@ onMounted(() => {
   border-color: var(--accent-color);
   box-shadow: 0 0 0 2px var(--accent-color-muted);
 }
-/* 當沒有下拉選單時，讓輸入框恢復圓角 */
 .input-group .dialog-input:only-child {
   border-radius: 4px;
 }
@@ -191,14 +189,15 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 0.75rem;
 }
+
+/* 2. 簡化點：移除已被通用 class 取代的樣式 */
 .btn {
   padding: 0.5rem 1.25rem;
   font-size: 0.9rem;
   font-weight: 500;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
+  border: none; /* .button-reset 已經處理 */
   transition: all 0.2s ease;
+  /* border-radius, cursor 已被取代 */
 }
 .btn-primary {
   background-color: var(--accent-color);

@@ -76,10 +76,11 @@ function onDragEnd() {
 <template>
   <div class="task-tabs-container">
     <div class="tabs-wrapper">
+      <!-- 1. 修改點：添加 .button-reset -->
       <button
         v-for="list in taskLists"
         :key="list.id"
-        class="tab-item"
+        class="tab-item button-reset"
         :class="{ 
           'is-active': list.id === activeListId,
           'is-dragging': list.id === draggedItemId
@@ -104,7 +105,8 @@ function onDragEnd() {
       </button>
     </div>
 
-    <button class="new-tab-btn" @click="handleNew" title="新增任務清單">
+    <!-- 2. 修改點：添加 .button-reset -->
+    <button class="new-tab-btn button-reset" @click="handleNew" title="新增任務清單">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
         <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
       </svg>
@@ -144,9 +146,9 @@ function onDragEnd() {
   border-bottom: none;
   border-radius: 4px 4px 0 0;
   padding: 8px 12px;
-  cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s ease;
+  /* cursor 已由 .button-reset 提供 */
 }
 
 .tab-item:hover {
@@ -154,19 +156,12 @@ function onDragEnd() {
   color: var(--text-primary);
 }
 
-/* --- 1. 修改點：更新 active 狀態的樣式 --- */
 .tab-item.is-active {
-  /* 為什麼：使用 --accent-color-muted 作為背景色，
-     使其與其他元件 (如側邊欄) 的選中狀態在視覺上保持一致。 */
   background-color: var(--accent-color-muted);
   color: var(--text-primary);
   font-weight: 500;
-  
-  /* 為什麼：保持 border-bottom-color 與背景色相同，
-     可以維持分頁籤與下方內容區塊 "連接在一起" 的視覺效果。 */
   border-bottom-color: var(--accent-color-muted);
-  
-  margin-bottom: -1px; /* 向上移動1px，覆蓋掉容器的底線 */
+  margin-bottom: -1px;
 }
 
 
@@ -205,10 +200,10 @@ function onDragEnd() {
   border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 6px 10px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* cursor 已由 .button-reset 提供 */
 }
 .new-tab-btn:hover {
   background-color: var(--accent-color);

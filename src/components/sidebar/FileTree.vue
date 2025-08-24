@@ -62,8 +62,9 @@ function handleEntryClick(entry: FileEntry) {
 <template>
   <div class="file-tree-container">
     <div v-for="entry in props.entries" :key="entry.path" class="file-tree-node">
+      <!-- 1. 修改點：整合 .interactive-item, .rounded-sm, .no-select 等通用 class -->
       <div
-        class="file-item"
+        class="file-item interactive-item rounded-sm no-select"
         :class="{
           'is-directory': entry.isDirectory,
           'is-selected-file': !entry.isDirectory && fileStore.selectedFilePath === entry.path,
@@ -90,11 +91,12 @@ function handleEntryClick(entry: FileEntry) {
 </template>
 
 <style scoped>
-/* (樣式保持不變) */
 .file-tree-container {
   width: max-content;
   min-width: 100%;
 }
+
+/* 2. 簡化點：移除已被 .interactive-item 等 class 取代的樣式 */
 .file-item {
   display: flex;
   align-items: center;
@@ -103,16 +105,12 @@ function handleEntryClick(entry: FileEntry) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-  user-select: none;
   color: var(--text-secondary);
+  /* cursor, border-radius, transition, user-select 都已移至通用 class */
 }
-.file-item:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-}
+
+/* hover 效果已由 .interactive-item:hover 提供 */
+
 .file-item.is-selected-file {
   background-color: var(--accent-color-muted);
   color: var(--text-primary);
