@@ -54,7 +54,7 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
     class="task-row" 
     :class="{ 
       'is-completed': task.isCompleted,
-      'is-main-task': props.level === 0  // --- 2. 新增點：為主任務動態添加 class ---
+      'is-main-task': props.level === 0
     }"
   >
     <td class="status-col">
@@ -66,7 +66,8 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
       />
     </td>
     <td class="task-col">
-      <div class="task-content-wrapper" :style="{ paddingLeft: `${props.level * 28}px` }">
+      <!-- 1. 修改點：整合 .flex-center (部分取代 .task-content-wrapper) -->
+      <div class="task-content-wrapper flex-center" :style="{ paddingLeft: `${props.level * 28}px` }">
         <span 
           v-if="task.children && task.children.length > 0" 
           class="toggle-arrow"
@@ -81,11 +82,13 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
       </div>
     </td>
     <td class="due-date-col">
-      <span v-if="task.dueDate" class="due-date-text">{{ task.dueDate }}</span>
+      <!-- 2. 修改點：添加 .rounded-sm -->
+      <span v-if="task.dueDate" class="due-date-text rounded-sm">{{ task.dueDate }}</span>
     </td>
     <td class="actions-col">
+      <!-- 3. 修改點：整合 .button-reset -->
       <button 
-        class="pin-button" 
+        class="pin-button button-reset"
         :class="{ 'is-pinned': task.isPinned }"
         @click="handlePinClick"
         title="釘選到儀表板"
@@ -118,12 +121,6 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
   vertical-align: middle; 
 }
 
-/* --- 3. 新增點：為主任務添加頂部邊框樣式 --- */
-/* 為什麼：為主任務增加一個更明顯的上邊框，
-   可以在視覺上將不同的主任務群組清晰地分隔開，
-   而子任務則因為沒有這個上邊框，會自然地 "歸屬於" 上方的主任務。
-   我們也為第一個主任務 `:first-child` 做了特殊處理，避免在表格最頂端出現多餘的線條。
-*/
 .task-row.is-main-task {
   background-color: #527374a9;
   border-top: 2px solid var(--bg-tertiary);
@@ -131,11 +128,9 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
 .task-row.is-main-task:first-child {
   border-top: none;
 }
-/* 子任務的背景色可以稍微調暗，以作區分 */
 .task-row:not(.is-main-task) {
   background-color: var(--bg-primary);
 }
-
 
 .status-col,
 .due-date-col,
@@ -150,10 +145,11 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
   vertical-align: middle;
 }
 
+/* 4. 簡化點：移除 display:flex 和 align-items */
 .task-content-wrapper {
-  display: flex;
-  align-items: center;
+  /* display: flex; align-items: center; */ /* <= 已由 .flex-center 取代 */
   gap: 6px;
+  /* justify-content 預設為 flex-start，符合需求，不需額外設定 */
 }
 
 .toggle-arrow {
@@ -187,18 +183,18 @@ function bubblePin(payload: { id: string; isPinned: boolean }) {
   color: var(--text-secondary);
 }
 
+/* 5. 簡化點：移除 border-radius */
 .due-date-text {
   font-size: 13px;
   color: var(--text-secondary);
   background-color: var(--bg-tertiary);
   padding: 2px 6px;
-  border-radius: 4px;
+  /* border-radius: 4px; */ /* <= 已由 .rounded-sm 取代 */
 }
 
+/* 6. 簡化點：移除已被 .button-reset 取代的樣式 */
 .pin-button {
-  background: none;
-  border: none;
-  cursor: pointer;
+  /* background, border, cursor 已移至 .button-reset */
   opacity: 0.3;
   transition: opacity 0.2s, transform 0.2s;
   font-size: 16px; 
