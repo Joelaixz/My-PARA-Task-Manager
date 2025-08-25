@@ -150,7 +150,7 @@ function closeDialog() {
                 v-model="form.is_urgent_pin"
                 :disabled="isUrgentPinDisabled"
               />
-              <span>🔥 釘選為最急迫事項</span>
+              <span>🔥最急迫事項</span>
             </label>
             <label class="checkbox-label" :class="{ 'is-disabled': isFutureReminderPinDisabled }">
               <input 
@@ -158,7 +158,7 @@ function closeDialog() {
                 v-model="form.is_future_reminder_pin"
                 :disabled="isFutureReminderPinDisabled"
               />
-              <span>🗓️ 釘選為未來提醒</span>
+              <span>🗓️未來提醒</span>
             </label>
           </div>
           

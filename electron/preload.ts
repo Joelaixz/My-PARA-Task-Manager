@@ -49,7 +49,8 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   addCalendarEvent: (event: any): Promise<any> => ipcRenderer.invoke('add-calendar-event', event),
   updateCalendarEvent: (id: number, updates: any): Promise<any | null> => ipcRenderer.invoke('update-calendar-event', { id, updates }),
   deleteCalendarEvent: (id: number): Promise<boolean> => ipcRenderer.invoke('delete-calendar-event', id),
-  // 1. 修正：為 getGlobalPinStatus 添加正確的回傳型別
+  // 3. 新增：橋接獲取釘選事件的 IPC 函式
+  getPinnedCalendarEvents: (): Promise<PinnedCalendarEvents> => ipcRenderer.invoke('get-pinned-calendar-events'),
   getGlobalPinStatus: (): Promise<PinStatus> => ipcRenderer.invoke('get-global-pin-status'),
 
   // on, off, send

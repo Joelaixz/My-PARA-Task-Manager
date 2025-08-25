@@ -8,6 +8,9 @@ import knex, { type Knex } from 'knex'
 import { databaseService } from './databaseService'
 import { fileService } from './fileService'
 import { parseMarkdownToTasks } from './markdownTaskParser'
+// 1. 修正：移除對 electron-env 的匯入
+// import type { CalendarEvent, PinStatus } from './electron-env';
+
 
 const require = createRequire(import.meta.url)
 const knexConfig: { [key: string]: Knex.Config } = require('../knexfile.cjs');
@@ -150,5 +153,7 @@ app.whenReady().then(() => {
   ipcMain.handle('update-calendar-event', (event, { id, updates }) => databaseService.updateCalendarEvent(db, id, updates));
   ipcMain.handle('delete-calendar-event', (event, id: number) => databaseService.deleteCalendarEvent(db, id));
   
+  // 3. 新增：處理獲取釘選事件的 IPC 請求
+  ipcMain.handle('get-pinned-calendar-events', () => databaseService.getPinnedCalendarEvents(db));
   ipcMain.handle('get-global-pin-status', () => databaseService.getGlobalPinStatus(db));
 })

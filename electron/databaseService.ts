@@ -29,10 +29,14 @@ interface CalendarEvent {
   created_at: string;
   updated_at: string;
 }
-// 1. 修正：更新 PinStatus 型別，包含被釘選事件的 ID
 interface PinStatus {
   urgentPinId: number | null;
   futureReminderPinId: number | null;
+}
+// 1. 新增：定義釘選日曆事件的回傳型別
+interface PinnedCalendarEvents {
+  urgentEvent: CalendarEvent | null;
+  futureEvent: CalendarEvent | null;
 }
 
 
@@ -131,13 +135,21 @@ async function deleteCalendarEvent(db: Knex, id: number): Promise<boolean> {
   const deletedRows = await db<CalendarEvent>('calendar_events').where('id', id).del();
   return deletedRows > 0;
 }
-// 2. 修正：讓 getGlobalPinStatus 函式回傳已釘選事件的 ID
 async function getGlobalPinStatus(db: Knex): Promise<PinStatus> {
   const urgentPin = await db<CalendarEvent>('calendar_events').where('is_urgent_pin', true).select('id').first();
   const futureReminderPin = await db<CalendarEvent>('calendar_events').where('is_future_reminder_pin', true).select('id').first();
   return {
     urgentPinId: urgentPin?.id || null,
     futureReminderPinId: futureReminderPin?.id || null,
+  };
+}
+// 2. 新增：獲取已釘選日曆事件的函式
+async function getPinnedCalendarEvents(db: Knex): Promise<PinnedCalendarEvents> {
+  const urgentEvent = await db<CalendarEvent>('calendar_events').where('is_urgent_pin', true).first();
+  const futureEvent = await db<CalendarEvent>('calendar_events').where('is_future_reminder_pin', true).first();
+  return {
+    urgentEvent: urgentEvent || null,
+    futureEvent: futureEvent || null,
   };
 }
 
@@ -166,4 +178,6 @@ export const databaseService = {
   updateCalendarEvent,
   deleteCalendarEvent,
   getGlobalPinStatus,
+  // 3. 新增：將新函式加入匯出物件
+  getPinnedCalendarEvents,
 };

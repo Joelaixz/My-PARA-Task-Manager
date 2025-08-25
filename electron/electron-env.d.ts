@@ -16,7 +16,11 @@ interface CalendarEvent {
   created_at: string;
   updated_at: string;
 }
-// --- 1. 修正：更新 PinStatus 的型別介面 ---
+interface PinnedCalendarEvents {
+  urgentEvent: CalendarEvent | null;
+  futureEvent: CalendarEvent | null;
+}
+// 1. 修正：更新 PinStatus 的型別介面
 interface PinStatus {
   urgentPinId: number | null;
   futureReminderPinId: number | null;
@@ -68,6 +72,8 @@ interface Window {
     addCalendarEvent(event: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>): Promise<CalendarEvent>;
     updateCalendarEvent(id: number, updates: Partial<Omit<CalendarEvent, 'id' | 'created_at'>>): Promise<CalendarEvent | null>;
     deleteCalendarEvent(id: number): Promise<boolean>;
+    getPinnedCalendarEvents(): Promise<PinnedCalendarEvents>;
+    // 2. 修正：更新 getGlobalPinStatus 的回傳型別
     getGlobalPinStatus(): Promise<PinStatus>;
 
     // on, off, send

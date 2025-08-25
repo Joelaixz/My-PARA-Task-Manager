@@ -28,6 +28,9 @@ export const useMainStore = defineStore('main', {
     activePersonalView: '今日焦點' as PersonalViewType,
     pinnedTasks: [] as PinnedTask[],
     isLoadingPinnedTasks: false,
+    // 1. 新增：儲存釘選日曆事件的狀態
+    urgentCalendarEvent: null as CalendarEvent | null,
+    futureReminderEvent: null as CalendarEvent | null,
   }),
   getters: {
     totalPinnedTasks: (state): number => {
@@ -103,10 +106,21 @@ export const useMainStore = defineStore('main', {
         this.isLoadingPinnedTasks = false;
       }
     },
+    // 2. 新增：獲取已釘選日曆事件的 action
+    async fetchPinnedCalendarEvents() {
+      try {
+        const { urgentEvent, futureEvent } = await window.ipcRenderer.getPinnedCalendarEvents();
+        this.urgentCalendarEvent = urgentEvent;
+        this.futureReminderEvent = futureEvent;
+      } catch (error) {
+        console.error("Failed to fetch pinned calendar events:", error);
+        this.urgentCalendarEvent = null;
+        this.futureReminderEvent = null;
+      }
+    }
   },
 })
 
-// --- 1. 復原點：移除 fileReloadKey 相關的程式碼 ---
 export const useFileStore = defineStore('file', {
   state: (): { 
     selectedFilePath: string | null;
