@@ -112,7 +112,7 @@ function cancelEditing() {
 }
 
 .board-note.focus-card {
-  border-left: 4px solid var(--color-personal);
+  border-left: 4px solid var(--color-projects);
 }
 
 /* 2. 簡化點：移除已被 .interactive-item 取代的樣式 */
@@ -153,6 +153,6 @@ function cancelEditing() {
 }
 .focus-textarea:focus {
   outline: none;
-  border-color: var(--color-personal);
+  border-color: var(--color-projects);
 }
 </style>
