@@ -21,6 +21,13 @@ const routes = [
         name: 'TaskList',
         // 使用動態載入 (lazy-loading) 來提升效能
         component: () => import('../components/personal/TaskListView.vue')
+      },
+      // --- 2. 新增「未來日誌」的子路由 ---
+      // 目的：為未來日誌頁面設定路由，路徑為 /future-log
+      {
+        path: 'future-log',
+        name: 'FutureLog',
+        component: () => import('../components/personal/FutureLogView.vue')
       }
     ]
   },

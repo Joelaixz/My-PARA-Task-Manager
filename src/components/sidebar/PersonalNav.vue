@@ -6,10 +6,16 @@ const mainStore = useMainStore();
 
 const emit = defineEmits(['toggle-collapse']);
 
+/**
+ * 目的：處理「切換至檔案總管」按鈕的點擊事件。
+ */
 function switchToExplorer() {
   mainStore.setSidebarMode('files');
 }
 
+/**
+ * 目的：向上傳遞收合側欄的請求。
+ */
 function onToggleCollapse() {
   emit('toggle-collapse');
 }
@@ -65,14 +71,14 @@ function setActiveView(viewName: PersonalViewType) {
           </RouterLink>
         </li>
         <li class="nav-item">
-          <a 
-            href="#" 
+          <RouterLink 
+            :to="{ name: 'FutureLog' }" 
             class="nav-link" 
             :class="{ 'is-active': mainStore.activePersonalView === '未來日誌' }"
-            @click.prevent="setActiveView('未來日誌')"
+            @click="setActiveView('未來日誌')"
           >
             未來日誌
-          </a>
+          </RouterLink>
         </li>
       </ul>
     </div>
