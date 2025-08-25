@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     return ipcRenderer.invoke(channel, ...omit);
   },
   
-  // --- 3. 新增點：將新的複製功能橋接給前端 ---
+  // --- (其他 IPC 通道保持不變) ---
   copyTextToClipboard: (text: string): Promise<boolean> => ipcRenderer.invoke('copy-text-to-clipboard', text),
 
   // Theme
@@ -43,6 +43,14 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
 
   // Markdown 解析
   parseMarkdownTasks: (markdownContent: string): Promise<any[]> => ipcRenderer.invoke('parse-markdown-tasks', { content: markdownContent }),
+
+  // 日曆事件
+  getCalendarEventsByMonth: (year: number, month: number): Promise<any[]> => ipcRenderer.invoke('get-calendar-events-by-month', { year, month }),
+  addCalendarEvent: (event: any): Promise<any> => ipcRenderer.invoke('add-calendar-event', event),
+  updateCalendarEvent: (id: number, updates: any): Promise<any | null> => ipcRenderer.invoke('update-calendar-event', { id, updates }),
+  deleteCalendarEvent: (id: number): Promise<boolean> => ipcRenderer.invoke('delete-calendar-event', id),
+  // 1. 修正：為 getGlobalPinStatus 添加正確的回傳型別
+  getGlobalPinStatus: (): Promise<PinStatus> => ipcRenderer.invoke('get-global-pin-status'),
 
   // on, off, send
   on: (...args: Parameters<typeof ipcRenderer.on>) => { const [channel, listener] = args; return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args)) },

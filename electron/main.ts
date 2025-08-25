@@ -1,5 +1,5 @@
 // 檔案位置: electron/main.ts
-// --- 1. 新增點：從 electron 匯入 clipboard ---
+// --- (其他匯入保持不變) ---
 import { app, BrowserWindow, ipcMain, session, shell, clipboard } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
@@ -105,13 +105,12 @@ app.whenReady().then(() => {
     })
   })
 
-  // --- 2. 新增點：建立一個處理複製文字請求的 IPC 通道 ---
+  // --- (其他 IPC 通道保持不變) ---
   ipcMain.handle('copy-text-to-clipboard', (event, text: string) => {
     clipboard.writeText(text);
-    return true; // 表示成功
+    return true; 
   });
 
-  // --- (其他 IPC 通道保持不變) ---
   ipcMain.handle('get-files', (event, directoryPath?: string) => fileService.getFiles(win, directoryPath))
   ipcMain.handle('read-file', (event, filePath: string) => fileService.readFile(filePath))
   ipcMain.handle('save-file', (event, filePath: string, content: string) => fileService.saveFile(filePath, content))
@@ -144,4 +143,12 @@ app.whenReady().then(() => {
     const result = parseMarkdownToTasks(content);
     return result;
   });
+
+  ipcMain.handle('get-calendar-events-by-month', (event, { year, month }: { year: number, month: number }) => databaseService.getCalendarEventsByMonth(db, year, month));
+  // 2. 修正：移除對 CalendarEvent 的型別註解，因為它是全域的
+  ipcMain.handle('add-calendar-event', (event, eventData) => databaseService.addCalendarEvent(db, eventData));
+  ipcMain.handle('update-calendar-event', (event, { id, updates }) => databaseService.updateCalendarEvent(db, id, updates));
+  ipcMain.handle('delete-calendar-event', (event, id: number) => databaseService.deleteCalendarEvent(db, id));
+  
+  ipcMain.handle('get-global-pin-status', () => databaseService.getGlobalPinStatus(db));
 })

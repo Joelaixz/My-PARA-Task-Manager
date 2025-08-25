@@ -1,7 +1,7 @@
 // 檔案位置: electron/databaseService.ts
 import type { Knex } from 'knex';
 
-// --- (其他型別定義保持不變) ---
+// --- (其他型別定義與函式保持不變) ---
 interface KvStorage {
   key: string;
   value: string;
@@ -19,8 +19,23 @@ interface TaskList {
   created_at: string;
   updated_at: string;
 }
+interface CalendarEvent {
+  id: number;
+  date: string; // YYYY-MM-DD
+  title: string;
+  content: string;
+  is_urgent_pin: boolean;
+  is_future_reminder_pin: boolean;
+  created_at: string;
+  updated_at: string;
+}
+// 1. 修正：更新 PinStatus 型別，包含被釘選事件的 ID
+interface PinStatus {
+  urgentPinId: number | null;
+  futureReminderPinId: number | null;
+}
 
-// --- Key-Value 儲存相關 ---
+
 async function getValue(db: Knex, key: string): Promise<string | null> {
   const result = await db<KvStorage>('kv_storage').where('key', key).first();
   return result ? result.value : null;
@@ -39,14 +54,10 @@ async function setLastPathForMode(db: Knex, mode: string, path: string): Promise
   const key = `last_path_${mode}`;
   return setValue(db, key, path);
 }
-
-// --- (隨手筆記 CRUD 操作保持不變) ---
 async function getAllScratchpadNotes(db: Knex): Promise<ScratchpadNote[]> { return db<ScratchpadNote>('scratchpad_notes').orderBy('created_at', 'asc'); }
 async function addScratchpadNote(db: Knex, content: string): Promise<ScratchpadNote> { const [newNote] = await db<ScratchpadNote>('scratchpad_notes').insert({ content }).returning('*'); return newNote; }
 async function updateScratchpadNote(db: Knex, id: number, content: string): Promise<ScratchpadNote | null> { const [updatedNote] = await db<ScratchpadNote>('scratchpad_notes').where('id', id).update({ content }).returning('*'); return updatedNote || null; }
 async function deleteScratchpadNote(db: Knex, id: number): Promise<boolean> { const deletedRows = await db<ScratchpadNote>('scratchpad_notes').where('id', id).del(); return deletedRows > 0; }
-
-// --- (任務清單 CRUD 操作保持不變) ---
 async function getTaskLists(db: Knex): Promise<TaskList[]> {
   return db<TaskList>('task_lists').orderBy('display_order', 'asc');
 }
@@ -59,9 +70,9 @@ async function createTaskList(db: Knex, name: string): Promise<TaskList> {
     const maxOrderResult = await trx('task_lists').max('display_order as maxOrder').first();
     const maxOrder = maxOrderResult?.maxOrder || 0;
     const [newTaskList] = await trx<TaskList>('task_lists')
-      .insert({ 
+      .insert({
         name,
-        display_order: maxOrder + 1 
+        display_order: maxOrder + 1
       })
       .returning('*');
     return newTaskList;
@@ -95,31 +106,64 @@ async function updateTaskListsOrder(db: Knex, orderedIds: number[]): Promise<boo
     return false;
   }
 }
+async function getCalendarEventsByMonth(db: Knex, year: number, month: number): Promise<CalendarEvent[]> {
+  const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const endDate = new Date(year, month + 1, 1).toISOString().split('T')[0];
+  return db<CalendarEvent>('calendar_events')
+    .where('date', '>=', startDate)
+    .andWhere('date', '<', endDate)
+    .orderBy('date', 'asc');
+}
 
-// --- 5. 將所有函式匯出 ---
+async function addCalendarEvent(db: Knex, event: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>): Promise<CalendarEvent> {
+  const [newEvent] = await db<CalendarEvent>('calendar_events').insert(event).returning('*');
+  return newEvent;
+}
+
+async function updateCalendarEvent(db: Knex, id: number, updates: Partial<Omit<CalendarEvent, 'id' | 'created_at'>>): Promise<CalendarEvent | null> {
+  const [updatedEvent] = await db<CalendarEvent>('calendar_events')
+    .where('id', id)
+    .update({ ...updates, updated_at: db.fn.now() })
+    .returning('*');
+  return updatedEvent || null;
+}
+async function deleteCalendarEvent(db: Knex, id: number): Promise<boolean> {
+  const deletedRows = await db<CalendarEvent>('calendar_events').where('id', id).del();
+  return deletedRows > 0;
+}
+// 2. 修正：讓 getGlobalPinStatus 函式回傳已釘選事件的 ID
+async function getGlobalPinStatus(db: Knex): Promise<PinStatus> {
+  const urgentPin = await db<CalendarEvent>('calendar_events').where('is_urgent_pin', true).select('id').first();
+  const futureReminderPin = await db<CalendarEvent>('calendar_events').where('is_future_reminder_pin', true).select('id').first();
+  return {
+    urgentPinId: urgentPin?.id || null,
+    futureReminderPinId: futureReminderPin?.id || null,
+  };
+}
+
+
 export const databaseService = {
-  // Key-Value
   getValue,
   setValue,
   getLastPathForMode,
   setLastPathForMode,
-  // MIT
   getMit: (db: Knex) => getValue(db, 'mit'),
   setMit: (db: Knex, content: string) => setValue(db, 'mit', content),
-  // --- 1. 新增點：建立讀取與儲存主題的函式 ---
-  // 目的：提供給 main.ts 呼叫的專用函式，用來操作資料庫中的主題設定。
   getTheme: (db: Knex) => getValue(db, 'theme'),
   setTheme: (db: Knex, theme: string) => setValue(db, 'theme', theme),
-  // Scratchpad
   getAllScratchpadNotes,
   addScratchpadNote,
   updateScratchpadNote,
   deleteScratchpadNote,
-  // Task Lists
   getTaskLists,
   getTaskList,
   createTaskList,
   updateTaskListContent,
   deleteTaskList,
   updateTaskListsOrder,
+  getCalendarEventsByMonth,
+  addCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+  getGlobalPinStatus,
 };
