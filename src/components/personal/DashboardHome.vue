@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { useMainStore } from '../../store';
 import FocusCard from './dashboard/FocusCard.vue';
 import ScratchpadCard from './dashboard/ScratchpadCard.vue';
 import TodayTasksCard from './dashboard/TodayTasksCard.vue';
 import UrgentPinCard from './dashboard/UrgentPinCard.vue';
 import FutureReminderCard from './dashboard/FutureReminderCard.vue';
 
-
-const mainStore = useMainStore();
-
-// --- 移除：所有與倒數計時器相關的邏輯都已移至 UrgentPinCard.vue ---
 </script>
 
 <template>

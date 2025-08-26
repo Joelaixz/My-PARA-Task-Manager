@@ -69,7 +69,7 @@ function cancelEditing() {
     <!-- 1. 修改點：整合 .interactive-item 和 .rounded-sm -->
     <p 
       v-if="!isEditing" 
-      class="focus-text interactive-item rounded-sm"
+      class="focus-text flex-center interactive-item rounded-sm"
       @click="startEditing"
       title="點擊以編輯"
     >
@@ -117,18 +117,15 @@ function cancelEditing() {
 
 /* 2. 簡化點：移除已被 .interactive-item 取代的樣式 */
 .focus-text {
-  font-size: 1.1rem;
+  font-size: 1.5rem;
+  font-weight: bold;
   color: var(--text-primary);
   line-height: 1.6;
   margin: 0;
   flex-grow: 1;
   white-space: pre-wrap;
   word-break: break-word;
-  padding: 0.5rem;
-  margin: -0.5rem;
-  /* cursor, border-radius, transition 已被取代 */
 }
-/* hover 效果已由 .interactive-item:hover 提供 */
 
 
 /* 編輯模式的容器 */
