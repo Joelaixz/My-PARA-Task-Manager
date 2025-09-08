@@ -16,8 +16,15 @@ onMounted(() => {
  * 目的：根據路由的頂層路由名稱，決定側邊欄應該處於何種模式。
  */
 function updateSidebarMode() {
+  // 1. 修改點：如果目標路由是 FileView，則不改變當前的 sidebarMode。
+  // 為什麼：當使用者在同一個模式下點擊不同檔案時，我們希望側邊欄的狀態（模式）保持不變，
+  //         而不是因為路由跳轉到 /view 而被重置。
   const topLevelRouteName = route.matched[0]?.name;
-  let mode: SidebarMode = 'files';
+  if (topLevelRouteName === 'FileView') {
+    return;
+  }
+
+  let mode: SidebarMode = 'files'; // 預設值
 
   switch(topLevelRouteName) {
     case 'Personal':
@@ -35,8 +42,8 @@ function updateSidebarMode() {
     case 'Archives':
       mode = 'archives';
       break;
-    default:
-      mode = 'files';
+    // 註解：如果找不到對應的模式，它會使用預設值 'files'，
+    // 但在我們簡化後的路由中，這種情況不應該發生。
   }
   
   mainStore.setSidebarMode(mode);
@@ -52,7 +59,6 @@ watch(() => route.name, () => {
 <template>
   <div class="main-layout">
     <nav class="l1-sidebar">
-      <!-- 1. 修改點：整合 .button-reset 與 .interactive-item 等通用 class -->
       <button
         @click="mainStore.toggleTheme"
         class="theme-toggle-button button-reset interactive-item rounded-md"
@@ -62,7 +68,6 @@ watch(() => route.name, () => {
         <span v-else>☀️</span>
       </button>
 
-      <!-- 2. 修改點：為所有 RouterLink 添加 .interactive-item class -->
       <RouterLink to="/" title="個人" class="interactive-item rounded-md">🏠</RouterLink>
       <RouterLink to="/projects" title="專案" class="interactive-item rounded-md">🚀</RouterLink>
       <RouterLink to="/areas" title="領域" class="interactive-item rounded-md">📚</RouterLink>
@@ -79,6 +84,7 @@ watch(() => route.name, () => {
 </template>
 
 <style scoped>
+/* 樣式保持不變 */
 .main-layout {
   display: flex;
   height: 100vh;
@@ -90,7 +96,6 @@ watch(() => route.name, () => {
 .l1-sidebar {
   width: 60px;
   background-color: var(--bg-l1-sidebar);
-  /* 使用 .flex-col 的概念，但因為有其他屬性，直接寫在這裡 */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -100,23 +105,19 @@ watch(() => route.name, () => {
   border-right: 1px solid var(--border-color);
 }
 
-/* 3. 簡化點：通用樣式已由 .button-reset 和 .interactive-item 取代 */
 .theme-toggle-button {
   color: var(--text-secondary);
   font-size: 1.5rem;
   padding: 0.5rem;
   margin-bottom: 1.5rem;
   line-height: 1;
-  /* 增加一個透明邊框，避免 hover 時佈局跳動 */
   border: 1px solid transparent;
 }
-/* hover 效果由 .interactive-item 提供，但邊框顏色需額外處理 */
 .theme-toggle-button:hover {
   border-color: var(--border-color);
 }
 
 
-/* 4. 簡化點：通用樣式已由 .interactive-item 取代 */
 .l1-sidebar a {
   color: var(--text-secondary);
   text-decoration: none;
@@ -126,13 +127,10 @@ watch(() => route.name, () => {
   padding: 0.5rem;
 }
 
-/* .interactive-item:hover 已處理了 hover 的背景色和文字顏色 */
-
 .l1-sidebar a.router-link-active {
   background-color: var(--accent-color);
   color: var(--text-accent-contrast);
 }
-/* 當 active 時，覆蓋 hover 效果 */
 .l1-sidebar a.router-link-active:hover {
   background-color: var(--accent-color);
   color: var(--text-accent-contrast);

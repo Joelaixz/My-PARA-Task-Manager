@@ -20,7 +20,6 @@ interface PinnedCalendarEvents {
   urgentEvent: CalendarEvent | null;
   futureEvent: CalendarEvent | null;
 }
-// 1. 修正：更新 PinStatus 的型別介面
 interface PinStatus {
   urgentPinId: number | null;
   futureReminderPinId: number | null;
@@ -30,7 +29,6 @@ interface Window {
   ipcRenderer: {
     invoke(channel: string, ...args: any[]): Promise<any>
     
-    // --- (其他 IPC 通道保持不變) ---
     copyTextToClipboard(text: string): Promise<boolean>;
 
     // Theme
@@ -49,6 +47,9 @@ interface Window {
     setMit(content: string): Promise<void>
     getLastPathForMode(mode: string): Promise<string | null>
     setLastPathForMode(mode: string, path: string): Promise<void>
+    // --- 1. 新增：為新函式添加 TypeScript 型別定義 ---
+    getLastFileForMode(mode: string): Promise<string | null>
+    setLastFileForMode(mode: string, path: string): Promise<void>
 
     // Scratchpad Notes
     getScratchpadNotes(): Promise<ScratchpadNote[]>
@@ -73,7 +74,6 @@ interface Window {
     updateCalendarEvent(id: number, updates: Partial<Omit<CalendarEvent, 'id' | 'created_at'>>): Promise<CalendarEvent | null>;
     deleteCalendarEvent(id: number): Promise<boolean>;
     getPinnedCalendarEvents(): Promise<PinnedCalendarEvents>;
-    // 2. 修正：更新 getGlobalPinStatus 的回傳型別
     getGlobalPinStatus(): Promise<PinStatus>;
 
     // on, off, send

@@ -1,13 +1,13 @@
 // 檔案位置: electron/preload.ts
 import { ipcRenderer, contextBridge } from 'electron'
 
+// 註解：此處定義的物件將會掛載到前端的 window.ipcRenderer 上
 contextBridge.exposeInMainWorld('ipcRenderer', {
   invoke: (...args: Parameters<typeof ipcRenderer.invoke>) => {
     const [channel, ...omit] = args;
     return ipcRenderer.invoke(channel, ...omit);
   },
   
-  // --- (其他 IPC 通道保持不變) ---
   copyTextToClipboard: (text: string): Promise<boolean> => ipcRenderer.invoke('copy-text-to-clipboard', text),
 
   // Theme
@@ -26,6 +26,9 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   setMit: (content: string): Promise<void> => ipcRenderer.invoke('set-mit', content),
   getLastPathForMode: (mode: string): Promise<string | null> => ipcRenderer.invoke('get-last-path-for-mode', mode),
   setLastPathForMode: (mode: string, path: string): Promise<void> => ipcRenderer.invoke('set-last-path-for-mode', { mode, path }),
+  // --- 1. 新增點：暴露用於處理「最後開啟檔案」的函式 ---
+  getLastFileForMode: (mode: string): Promise<string | null> => ipcRenderer.invoke('get-last-file-for-mode', mode),
+  setLastFileForMode: (mode: string, path: string): Promise<void> => ipcRenderer.invoke('set-last-file-for-mode', { mode, path }),
 
   // Scratchpad Notes
   getScratchpadNotes: (): Promise<any[]> => ipcRenderer.invoke('get-scratchpad-notes'),
@@ -49,7 +52,6 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   addCalendarEvent: (event: any): Promise<any> => ipcRenderer.invoke('add-calendar-event', event),
   updateCalendarEvent: (id: number, updates: any): Promise<any | null> => ipcRenderer.invoke('update-calendar-event', { id, updates }),
   deleteCalendarEvent: (id: number): Promise<boolean> => ipcRenderer.invoke('delete-calendar-event', id),
-  // 3. 新增：橋接獲取釘選事件的 IPC 函式
   getPinnedCalendarEvents: (): Promise<PinnedCalendarEvents> => ipcRenderer.invoke('get-pinned-calendar-events'),
   getGlobalPinStatus: (): Promise<PinStatus> => ipcRenderer.invoke('get-global-pin-status'),
 

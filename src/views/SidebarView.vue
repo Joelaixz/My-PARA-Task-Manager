@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
-import { useMainStore } from '../store'
+// 1. 簡化點：不再需要 mainStore 來判斷顯示哪個元件
+// import { useMainStore } from '../store'
 
-// --- 1. 匯入所有側邊欄模式對應的子元件 ---
+// 2. 簡化點：只匯入 FileExplorer，移除所有其他的 Nav 元件
 import FileExplorer from '../components/sidebar/FileExplorer.vue'
-import PersonalNav from '../components/sidebar/PersonalNav.vue'
-import ProjectsNav from '../components/sidebar/ProjectsNav.vue'
-import AreasNav from '../components/sidebar/AreasNav.vue'
-import ResourcesNav from '../components/sidebar/ResourcesNav.vue'
-import ArchivesNav from '../components/sidebar/ArchivesNav.vue'
 
-const mainStore = useMainStore();
-
-// 容器本身的邏輯 (收合/展開/調整寬度) 保持不變
+// 註解：容器本身的收合/展開/調整寬度邏輯保持不變
 const isCollapsed = ref(false)
 const sidebarWidth = ref(240)
 const isResizing = ref(false)
@@ -66,30 +60,7 @@ onUnmounted(() => {
     <aside class="l2-sidebar" :style="sidebarStyle">
       <div v-if="!isCollapsed" class="sidebar-content">
 
-        <FileExplorer
-          v-if="mainStore.sidebarMode === 'files'"
-          @toggle-collapse="toggleCollapse" 
-        />
-        <PersonalNav 
-          v-else-if="mainStore.sidebarMode === 'personal'" 
-          @toggle-collapse="toggleCollapse"
-        />
-        <ProjectsNav
-          v-else-if="mainStore.sidebarMode === 'projects'"
-          @toggle-collapse="toggleCollapse"
-        />
-        <AreasNav
-          v-else-if="mainStore.sidebarMode === 'areas'"
-          @toggle-collapse="toggleCollapse"
-        />
-        <ResourcesNav
-          v-else-if="mainStore.sidebarMode === 'resources'"
-          @toggle-collapse="toggleCollapse"
-        />
-        <ArchivesNav
-          v-else-if="mainStore.sidebarMode === 'archives'"
-          @toggle-collapse="toggleCollapse"
-        />
+        <FileExplorer @toggle-collapse="toggleCollapse" />
 
       </div>
     </aside>

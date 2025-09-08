@@ -33,7 +33,6 @@ interface PinStatus {
   urgentPinId: number | null;
   futureReminderPinId: number | null;
 }
-// 1. 新增：定義釘選日曆事件的回傳型別
 interface PinnedCalendarEvents {
   urgentEvent: CalendarEvent | null;
   futureEvent: CalendarEvent | null;
@@ -58,6 +57,31 @@ async function setLastPathForMode(db: Knex, mode: string, path: string): Promise
   const key = `last_path_${mode}`;
   return setValue(db, key, path);
 }
+
+// --- 1. 新增：讀取/寫入各模式最後開啟檔案的函式 ---
+/**
+ * 目的：根據模式名稱，從資料庫讀取最後開啟的檔案路徑。
+ * @param db - Knex 資料庫實例。
+ * @param mode - 模式名稱 (例如 'personal', 'projects')。
+ * @returns {Promise<string | null>} - 檔案路徑或 null。
+ */
+async function getLastFileForMode(db: Knex, mode: string): Promise<string | null> {
+  const key = `last_file_${mode}`;
+  return getValue(db, key);
+}
+
+/**
+ * 目的：將指定模式的最後開啟檔案路徑寫入資料庫。
+ * @param db - Knex 資料庫實例。
+ * @param mode - 模式名稱。
+ * @param path - 要儲存的完整檔案路徑。
+ */
+async function setLastFileForMode(db: Knex, mode: string, path: string): Promise<void> {
+  const key = `last_file_${mode}`;
+  return setValue(db, key, path);
+}
+
+
 async function getAllScratchpadNotes(db: Knex): Promise<ScratchpadNote[]> { return db<ScratchpadNote>('scratchpad_notes').orderBy('created_at', 'asc'); }
 async function addScratchpadNote(db: Knex, content: string): Promise<ScratchpadNote> { const [newNote] = await db<ScratchpadNote>('scratchpad_notes').insert({ content }).returning('*'); return newNote; }
 async function updateScratchpadNote(db: Knex, id: number, content: string): Promise<ScratchpadNote | null> { const [updatedNote] = await db<ScratchpadNote>('scratchpad_notes').where('id', id).update({ content }).returning('*'); return updatedNote || null; }
@@ -143,7 +167,6 @@ async function getGlobalPinStatus(db: Knex): Promise<PinStatus> {
     futureReminderPinId: futureReminderPin?.id || null,
   };
 }
-// 2. 新增：獲取已釘選日曆事件的函式
 async function getPinnedCalendarEvents(db: Knex): Promise<PinnedCalendarEvents> {
   const urgentEvent = await db<CalendarEvent>('calendar_events').where('is_urgent_pin', true).first();
   const futureEvent = await db<CalendarEvent>('calendar_events').where('is_future_reminder_pin', true).first();
@@ -159,6 +182,9 @@ export const databaseService = {
   setValue,
   getLastPathForMode,
   setLastPathForMode,
+  // --- 2. 新增：將新函式加入匯出物件 ---
+  getLastFileForMode,
+  setLastFileForMode,
   getMit: (db: Knex) => getValue(db, 'mit'),
   setMit: (db: Knex, content: string) => setValue(db, 'mit', content),
   getTheme: (db: Knex) => getValue(db, 'theme'),
@@ -178,6 +204,5 @@ export const databaseService = {
   updateCalendarEvent,
   deleteCalendarEvent,
   getGlobalPinStatus,
-  // 3. 新增：將新函式加入匯出物件
   getPinnedCalendarEvents,
 };

@@ -1,19 +1,15 @@
 // 檔案位置: src/components/sidebar/FileExplorer.vue
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import FileTree from './FileTree.vue'
 import SidebarHeader from './SidebarHeader.vue'
 import InputDialog from './InputDialog.vue'
-// --- 1. 修改點：同時匯入 useMainStore ---
-import { useFileStore, useMainStore } from '../../store'
+import { useFileStore, useMainStore, type SidebarMode } from '../../store'
 
 const router = useRouter()
 const fileStore = useFileStore()
-// --- 2. 新增點：取得 mainStore 的實例 ---
-// 目的：我們需要 mainStore 來得知是從哪個模式（例如 'personal'）切換到檔案總管的。
 const mainStore = useMainStore()
-
 
 interface FileEntry {
   name: string;
@@ -29,7 +25,6 @@ const fileExtensions = ref(['.md', '.txt'])
 const creationType = ref<'file' | 'folder' | null>(null);
 const currentCreateFunction = ref<(parentDir: string, name: string, rootPath: string) => Promise<{ newPath: string; files: FileEntry[] } | null>>()
 
-
 const fileList = ref<FileEntry[]>([])
 const selectedFolderName = ref('檔案總管')
 const rootPath = ref<string | null>(null)
@@ -37,11 +32,8 @@ const isLoading = ref(false)
 
 const emit = defineEmits(['toggle-collapse']);
 
-// --- 3. 修改點：調整 handleLoadFiles 函式 ---
-// 目的：在使用者手動選擇新資料夾後，儲存該路徑。
 async function handleLoadFiles(directoryPath?: string) {
   isLoading.value = true
-  // 僅在手動選擇資料夾時清空現有狀態
   if (!directoryPath) {
     fileList.value = []
     rootPath.value = null
@@ -56,15 +48,20 @@ async function handleLoadFiles(directoryPath?: string) {
       selectedFolderName.value = result.folderName;
       rootPath.value = result.rootPath;
 
-      // 如果 directoryPath 是 undefined，代表是使用者透過對話框選擇的
-      // 這時我們需要儲存這個新路徑
-      if (!directoryPath && mainStore.previousSidebarMode) {
-        // 為什麼：將新選擇的路徑與當前的模式關聯並儲存，
-        //         這樣下次從同一個模式切換回來時，就能直接載入。
-        await window.ipcRenderer.setLastPathForMode(mainStore.previousSidebarMode, result.rootPath);
+      // 1. 修改點：當使用者透過對話框手動選擇新資料夾時，更新該模式的儲存路徑。
+      const modeToUpdate = mainStore.sidebarMode === 'files' 
+        ? mainStore.previousSidebarMode 
+        : mainStore.sidebarMode;
+        
+      if (!directoryPath && modeToUpdate) {
+        // 為什麼：這確保了當使用者點擊「重新載入」按鈕時，新的選擇會覆蓋舊的記憶。
+        await window.ipcRenderer.setLastPathForMode(modeToUpdate, result.rootPath);
+        // 同時，清除該模式下「最後開啟檔案」的記錄，因為根目錄已變更。
+        await window.ipcRenderer.setLastFileForMode(modeToUpdate, ''); 
+        // 並且清除前端當前選中的檔案狀態。
+        fileStore.selectFile(null);
       }
 
-      // 確保根目錄總是展開的
       if (rootPath.value) {
         fileStore.selectFolder(rootPath.value);
         fileStore.toggleFolderExpansion(rootPath.value);
@@ -83,21 +80,33 @@ async function handleLoadFiles(directoryPath?: string) {
   }
 }
 
-// --- 4. 新增點：在元件掛載時自動載入最後路徑 ---
-onMounted(async () => {
-  // 為什麼：這是實現「記憶功能」的入口。當元件第一次顯示時，
-  //         我們檢查是從哪個模式切換過來的。
-  if (mainStore.previousSidebarMode) {
-    const lastPath = await window.ipcRenderer.getLastPathForMode(mainStore.previousSidebarMode);
-    // 如果資料庫中存在該模式的路徑，就自動載入它。
-    if (lastPath) {
-      await handleLoadFiles(lastPath);
+async function loadMode(mode: SidebarMode | null) {
+  if (!mode || mode === 'files') return;
+  
+  const lastFolderPath = await window.ipcRenderer.getLastPathForMode(mode);
+
+  if (lastFolderPath) {
+    await handleLoadFiles(lastFolderPath);
+    
+    const lastFilePath = await window.ipcRenderer.getLastFileForMode(mode);
+    if (lastFilePath) {
+      fileStore.selectFile(lastFilePath);
+      fileStore.ensurePathIsExpanded(lastFilePath);
+    } else {
+      fileStore.selectFile(null);
     }
+  } else {
+    fileList.value = [];
+    rootPath.value = null;
+    selectedFolderName.value = '請選擇資料夾';
+    fileStore.selectFile(null);
   }
-});
+}
 
+watch(() => mainStore.sidebarMode, (newMode) => {
+  loadMode(newMode);
+}, { immediate: true });
 
-// 處理建立新項目(檔案/資料夾)的邏輯 (保持不變)
 function triggerCreateNewItem(type: 'file' | 'folder') {
   if (!rootPath.value) {
     alert('請先選擇一個根資料夾。');
@@ -116,7 +125,6 @@ function triggerCreateNewItem(type: 'file' | 'folder') {
   isDialogVisible.value = true;
 }
 
-// 處理彈出對話框確認後的邏輯 (保持不變)
 async function handleDialogConfirm(newItemName: string) {
   if (!newItemName || !currentCreateFunction.value || !rootPath.value) {
     return;
@@ -136,6 +144,9 @@ async function handleDialogConfirm(newItemName: string) {
       if (creationType.value === 'file') {
         fileStore.setPendingEdit();
         fileStore.selectFile(result.newPath);
+        if (mainStore.sidebarMode !== 'files') {
+            await window.ipcRenderer.setLastFileForMode(mainStore.sidebarMode, result.newPath);
+        }
       } else if (creationType.value === 'folder') {
         fileStore.selectFolder(result.newPath);
       }
@@ -152,7 +163,6 @@ async function handleDialogConfirm(newItemName: string) {
   }
 }
 
-// 監聽選中檔案的變化以觸發路由跳轉 (保持不變)
 watch(() => fileStore.selectedFilePath, (newPath) => {
   if (newPath && router.currentRoute.value.path !== '/view') {
     router.push('/view')

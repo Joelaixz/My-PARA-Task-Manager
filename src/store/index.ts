@@ -4,43 +4,31 @@ import path from 'path-browserify'
 
 export type Theme = 'light' | 'dark';
 
-// --- (其他型別定義保持不變) ---
-export interface ParsedTask {
-  id: string;
-  content: string;
-  isCompleted: boolean;
-  isPinned: boolean;
-  dueDate: string | null;
-  children: ParsedTask[];
-}
-export interface PinnedTask extends ParsedTask {
-  sourceList: string;
-  sourceListId: number;
-}
+// --- 1. 簡化點：移除不再需要的型別定義 ---
+// export interface ParsedTask { ... }
+// export interface PinnedTask extends ParsedTask { ... }
 export type SidebarMode = 'files' | 'personal' | 'projects' | 'areas' | 'resources' | 'archives';
-export type PersonalViewType = '今日焦點' | '任務清單' | '未來日誌';
+// export type PersonalViewType = '今日焦點' | '任務清單' | '未來日誌';
 
 export const useMainStore = defineStore('main', {
+  // --- 2. 簡化點：移除所有與儀表板、任務相關的 state ---
   state: () => ({
     theme: 'dark' as Theme,
     sidebarMode: 'files' as SidebarMode,
     previousSidebarMode: null as SidebarMode | null,
-    activePersonalView: '今日焦點' as PersonalViewType,
-    pinnedTasks: [] as PinnedTask[],
-    isLoadingPinnedTasks: false,
-    // 1. 新增：儲存釘選日曆事件的狀態
-    urgentCalendarEvent: null as CalendarEvent | null,
-    futureReminderEvent: null as CalendarEvent | null,
+    // activePersonalView: '今日焦點' as PersonalViewType,
+    // pinnedTasks: [] as PinnedTask[],
+    // isLoadingPinnedTasks: false,
+    // urgentCalendarEvent: null as CalendarEvent | null,
+    // futureReminderEvent: null as CalendarEvent | null,
   }),
+  // --- 3. 簡化點：移除不再需要的 getters ---
   getters: {
-    totalPinnedTasks: (state): number => {
-      return state.pinnedTasks.length;
-    },
-    completedPinnedTasks: (state): number => {
-      return state.pinnedTasks.filter(task => task.isCompleted).length;
-    },
+    // totalPinnedTasks: (state): number => { ... },
+    // completedPinnedTasks: (state): number => { ... },
   },
   actions: {
+    // --- (主題相關的 actions 保持不變) ---
     async initTheme() {
       const savedTheme = await window.ipcRenderer.invoke('get-theme') as Theme | null;
       if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
@@ -53,12 +41,8 @@ export const useMainStore = defineStore('main', {
       document.documentElement.setAttribute('data-theme', this.theme);
       await window.ipcRenderer.invoke('set-theme', this.theme);
     },
-    updatePinnedTaskStatus(taskId: string, isCompleted: boolean) {
-      const task = this.pinnedTasks.find(t => t.id === taskId);
-      if (task) {
-        task.isCompleted = isCompleted;
-      }
-    },
+
+    // --- (側邊欄模式相關的 actions 保持不變) ---
     setSidebarMode(mode: SidebarMode) {
       if (mode === 'files' && this.sidebarMode !== 'files') {
         this.previousSidebarMode = this.sidebarMode;
@@ -71,56 +55,15 @@ export const useMainStore = defineStore('main', {
         this.previousSidebarMode = null;
       }
     },
-    setActivePersonalView(view: PersonalViewType) {
-      this.activePersonalView = view;
-    },
-    async fetchPinnedTasks() {
-      this.isLoadingPinnedTasks = true;
-      try {
-        const allLists = await window.ipcRenderer.getTaskLists();
-        let allPinnedTasks: PinnedTask[] = [];
-        const findPinned = (tasks: ParsedTask[], sourceName: string, sourceId: number): PinnedTask[] => {
-          let results: PinnedTask[] = [];
-          for (const task of tasks) {
-            if (task.isPinned) {
-              results.push({ ...task, sourceList: sourceName, sourceListId: sourceId });
-            }
-            if (task.children && task.children.length > 0) {
-              results = results.concat(findPinned(task.children, sourceName, sourceId));
-            }
-          }
-          return results;
-        };
-        for (const list of allLists) {
-          if (list.content) {
-            const parsed = await window.ipcRenderer.parseMarkdownTasks(list.content);
-            const pinned = findPinned(parsed, list.name, list.id);
-            allPinnedTasks = allPinnedTasks.concat(pinned);
-          }
-        }
-        this.pinnedTasks = allPinnedTasks;
-      } catch (error) {
-        console.error("Failed to load pinned tasks in store:", error);
-        this.pinnedTasks = [];
-      } finally {
-        this.isLoadingPinnedTasks = false;
-      }
-    },
-    // 2. 新增：獲取已釘選日曆事件的 action
-    async fetchPinnedCalendarEvents() {
-      try {
-        const { urgentEvent, futureEvent } = await window.ipcRenderer.getPinnedCalendarEvents();
-        this.urgentCalendarEvent = urgentEvent;
-        this.futureReminderEvent = futureEvent;
-      } catch (error) {
-        console.error("Failed to fetch pinned calendar events:", error);
-        this.urgentCalendarEvent = null;
-        this.futureReminderEvent = null;
-      }
-    }
+    
+    // --- 4. 簡化點：移除所有與儀表板、任務相關的 actions ---
+    // setActivePersonalView(view: PersonalViewType) { ... },
+    // async fetchPinnedTasks() { ... },
+    // async fetchPinnedCalendarEvents() { ... }
   },
 })
 
+// 註解：useFileStore 維持不變，因為它的功能依然是新架構的核心。
 export const useFileStore = defineStore('file', {
   state: (): { 
     selectedFilePath: string | null;

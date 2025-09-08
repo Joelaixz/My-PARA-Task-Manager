@@ -1,60 +1,43 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import PersonalView from '../views/PersonalView.vue'
 import FileView from '../views/FileView.vue'
-
-import DashboardHome from '../components/personal/DashboardHome.vue'
 
 const routes = [
   {
+    // 目的：將根路徑（個人模式）的元件指向 FileView
     path: '/',
     name: 'Personal',
-    component: PersonalView,
-    children: [
-      {
-        path: '',
-        name: 'DashboardHome',
-        component: DashboardHome,
-      },
-      // --- 1. 新增「任務清單」的子路由 ---
-      {
-        path: 'tasks', // 當使用者訪問 /tasks 時
-        name: 'TaskList',
-        // 使用動態載入 (lazy-loading) 來提升效能
-        component: () => import('../components/personal/TaskListView.vue')
-      },
-      // --- 2. 新增「未來日誌」的子路由 ---
-      // 目的：為未來日誌頁面設定路由，路徑為 /future-log
-      {
-        path: 'future-log',
-        name: 'FutureLog',
-        component: () => import('../components/personal/FutureLogView.vue')
-      }
-    ]
+    component: FileView,
+    // 註解：移除了原有的 children 陣列，因為不再需要儀表板、任務清單等子視圖。
   },
   {
+    // 目的：保留此獨立路由，因為 FileTree 元件目前使用它來強制刷新視圖。
     path: '/view',
     name: 'FileView',
     component: FileView,
   },
   {
+    // 目的：將專案模式的元件指向 FileView
     path: '/projects',
     name: 'Projects',
-    component: () => import('../views/ProjectsView.vue'), // 懶加載
+    component: FileView,
   },
   {
+    // 目的：將領域模式的元件指向 FileView
     path: '/areas',
     name: 'Areas',
-    component: () => import('../views/AreasView.vue'), // 懶加載
+    component: FileView,
   },
   {
+    // 目的：將資源模式的元件指向 FileView
     path: '/resources',
     name: 'Resources',
-    component: () => import('../views/ResourcesView.vue'), // 懶加載
+    component: FileView,
   },
   {
+    // 目的：將封存模式的元件指向 FileView
     path: '/archives',
     name: 'Archives',
-    component: () => import('../views/ArchivesView.vue'), // 懶加載
+    component: FileView,
   },
 ]
 

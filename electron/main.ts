@@ -8,9 +8,6 @@ import knex, { type Knex } from 'knex'
 import { databaseService } from './databaseService'
 import { fileService } from './fileService'
 import { parseMarkdownToTasks } from './markdownTaskParser'
-// 1. 修正：移除對 electron-env 的匯入
-// import type { CalendarEvent, PinStatus } from './electron-env';
-
 
 const require = createRequire(import.meta.url)
 const knexConfig: { [key: string]: Knex.Config } = require('../knexfile.cjs');
@@ -108,7 +105,6 @@ app.whenReady().then(() => {
     })
   })
 
-  // --- (其他 IPC 通道保持不變) ---
   ipcMain.handle('copy-text-to-clipboard', (event, text: string) => {
     clipboard.writeText(text);
     return true; 
@@ -127,6 +123,11 @@ app.whenReady().then(() => {
   ipcMain.handle('set-mit', (event, content: string) => databaseService.setMit(db, content))
   ipcMain.handle('get-last-path-for-mode', (event, mode: string) => databaseService.getLastPathForMode(db, mode));
   ipcMain.handle('set-last-path-for-mode', (event, { mode, path }: { mode: string, path: string }) => databaseService.setLastPathForMode(db, mode, path));
+
+  // --- 1. 新增點：註冊用於處理「最後開啟檔案」的 IPC 通道 ---
+  ipcMain.handle('get-last-file-for-mode', (event, mode: string) => databaseService.getLastFileForMode(db, mode));
+  ipcMain.handle('set-last-file-for-mode', (event, { mode, path }: { mode: string, path: string }) => databaseService.setLastFileForMode(db, mode, path));
+
 
   ipcMain.handle('get-scratchpad-notes', () => databaseService.getAllScratchpadNotes(db))
   ipcMain.handle('add-scratchpad-note', (event, content: string) => databaseService.addScratchpadNote(db, content))
@@ -148,12 +149,10 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('get-calendar-events-by-month', (event, { year, month }: { year: number, month: number }) => databaseService.getCalendarEventsByMonth(db, year, month));
-  // 2. 修正：移除對 CalendarEvent 的型別註解，因為它是全域的
   ipcMain.handle('add-calendar-event', (event, eventData) => databaseService.addCalendarEvent(db, eventData));
   ipcMain.handle('update-calendar-event', (event, { id, updates }) => databaseService.updateCalendarEvent(db, id, updates));
   ipcMain.handle('delete-calendar-event', (event, id: number) => databaseService.deleteCalendarEvent(db, id));
   
-  // 3. 新增：處理獲取釘選事件的 IPC 請求
   ipcMain.handle('get-pinned-calendar-events', () => databaseService.getPinnedCalendarEvents(db));
   ipcMain.handle('get-global-pin-status', () => databaseService.getGlobalPinStatus(db));
 })

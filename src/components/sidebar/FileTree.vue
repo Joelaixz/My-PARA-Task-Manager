@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { defineProps } from 'vue'
-// --- 1. 新增點：匯入 useRouter ---
 import { useRouter } from 'vue-router'
 import path from 'path-browserify'
-import { useFileStore } from '../../store'
+// --- 1. 新增點：同時匯入 useMainStore ---
+import { useFileStore, useMainStore } from '../../store'
 
 interface FileEntry {
   name: string;
@@ -18,8 +17,9 @@ const props = defineProps<{
 }>()
 
 const fileStore = useFileStore()
-// --- 2. 新增點：取得 router 實例 ---
 const router = useRouter()
+// --- 2. 新增點：取得 mainStore 實例 ---
+const mainStore = useMainStore()
 
 function getIconForFile(fileName: string): string {
   const extension = fileName.split('.').pop()?.toLowerCase();
@@ -37,23 +37,29 @@ function getIconForFile(fileName: string): string {
  * 目的：處理使用者點擊檔案樹中任一項目的行為。
  * @param entry - 使用者點擊的 FileEntry 物件。
  */
-function handleEntryClick(entry: FileEntry) {
+async function handleEntryClick(entry: FileEntry) {
   if (entry.isDirectory) {
     fileStore.toggleFolderExpansion(entry.path);
     fileStore.selectFolder(entry.path);
   } else {
-    // --- 3. 修改點：使用路由來處理檔案選擇和刷新 ---
+    // 3. 修改點：在選中檔案後，呼叫後端儲存此路徑
+    // 為什麼：這是實現「記憶最後開啟檔案」功能的關鍵。我們需要知道是在哪個模式下選中了哪個檔案。
+    const mode = mainStore.sidebarMode === 'files' 
+      ? mainStore.previousSidebarMode 
+      : mainStore.sidebarMode;
+      
+    if (mode) {
+      // 將這個檔案路徑與當前模式綁定並儲存
+      await window.ipcRenderer.setLastFileForMode(mode, entry.path);
+    }
+
     if (fileStore.selectedFilePath === entry.path) {
-      // 如果點擊的是已選中的檔案，則在路由後面附加一個時間戳查詢參數
-      // 這會改變 route.fullPath，從而觸發 RouterView 的 key 變化，強制重新渲染
       router.push({ path: '/view', query: { t: Date.now() } });
     } else {
-      // 如果是選擇新檔案，則正常導航
       fileStore.selectFile(entry.path);
       router.push('/view');
     }
     
-    // 選中檔案的同時，也將其所在的資料夾設為選中狀態
     fileStore.selectFolder(path.dirname(entry.path));
   }
 }
@@ -62,7 +68,6 @@ function handleEntryClick(entry: FileEntry) {
 <template>
   <div class="file-tree-container">
     <div v-for="entry in props.entries" :key="entry.path" class="file-tree-node">
-      <!-- 1. 修改點：整合 .interactive-item, .rounded-sm, .no-select 等通用 class -->
       <div
         class="file-item interactive-item rounded-sm no-select"
         :class="{
@@ -96,7 +101,6 @@ function handleEntryClick(entry: FileEntry) {
   min-width: 100%;
 }
 
-/* 2. 簡化點：移除已被 .interactive-item 等 class 取代的樣式 */
 .file-item {
   display: flex;
   align-items: center;
@@ -106,10 +110,7 @@ function handleEntryClick(entry: FileEntry) {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--text-secondary);
-  /* cursor, border-radius, transition, user-select 都已移至通用 class */
 }
-
-/* hover 效果已由 .interactive-item:hover 提供 */
 
 .file-item.is-selected-file {
   background-color: var(--accent-color-muted);
