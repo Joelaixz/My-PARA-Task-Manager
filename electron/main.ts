@@ -1,5 +1,4 @@
 // 檔案位置: electron/main.ts
-// --- (其他匯入保持不變) ---
 import { app, BrowserWindow, ipcMain, session, shell, clipboard } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
@@ -110,12 +109,18 @@ app.whenReady().then(() => {
     return true; 
   });
 
+  // --- 檔案操作 IPC ---
   ipcMain.handle('get-files', (event, directoryPath?: string) => fileService.getFiles(win, directoryPath))
   ipcMain.handle('read-file', (event, filePath: string) => fileService.readFile(filePath))
   ipcMain.handle('save-file', (event, filePath: string, content: string) => fileService.saveFile(filePath, content))
   ipcMain.handle('create-file', (event, parentDir: string, fileName: string, rootPath: string) => fileService.createFile(parentDir, fileName, rootPath))
   ipcMain.handle('create-folder', (event, parentDir: string, folderName: string, rootPath: string) => fileService.createFolder(parentDir, folderName, rootPath))
+  // --- 1. 新增點：註冊刪除和重新命名的 IPC 通道 ---
+  ipcMain.handle('delete-entry', (event, entryPath: string) => fileService.deleteEntry(entryPath));
+  ipcMain.handle('rename-entry', (event, { oldPath, newName }: { oldPath: string, newName: string }) => fileService.renameEntry(oldPath, newName));
+
   
+  // --- (其他 IPC 通道保持不變) ---
   ipcMain.handle('get-theme', () => databaseService.getTheme(db));
   ipcMain.handle('set-theme', (event, theme: string) => databaseService.setTheme(db, theme));
   
@@ -123,11 +128,8 @@ app.whenReady().then(() => {
   ipcMain.handle('set-mit', (event, content: string) => databaseService.setMit(db, content))
   ipcMain.handle('get-last-path-for-mode', (event, mode: string) => databaseService.getLastPathForMode(db, mode));
   ipcMain.handle('set-last-path-for-mode', (event, { mode, path }: { mode: string, path: string }) => databaseService.setLastPathForMode(db, mode, path));
-
-  // --- 1. 新增點：註冊用於處理「最後開啟檔案」的 IPC 通道 ---
   ipcMain.handle('get-last-file-for-mode', (event, mode: string) => databaseService.getLastFileForMode(db, mode));
   ipcMain.handle('set-last-file-for-mode', (event, { mode, path }: { mode: string, path: string }) => databaseService.setLastFileForMode(db, mode, path));
-
 
   ipcMain.handle('get-scratchpad-notes', () => databaseService.getAllScratchpadNotes(db))
   ipcMain.handle('add-scratchpad-note', (event, content: string) => databaseService.addScratchpadNote(db, content))

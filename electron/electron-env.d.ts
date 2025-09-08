@@ -41,13 +41,15 @@ interface Window {
     saveFile(filePath: string, content: string): Promise<boolean>
     createFile(parentDir: string, fileName: string, rootPath: string): Promise<{ newPath: string; files: FileEntry[] } | null>
     createFolder(parentDir: string, folderName: string, rootPath: string): Promise<{ newPath: string; files: FileEntry[] } | null>
+    // --- 1. 新增點：為刪除和重新命名函式添加型別定義 ---
+    deleteEntry(entryPath: string): Promise<boolean>;
+    renameEntry(oldPath: string, newName: string): Promise<string | null>;
 
     // Key-Value
     getMit(): Promise<string | null>
     setMit(content: string): Promise<void>
     getLastPathForMode(mode: string): Promise<string | null>
     setLastPathForMode(mode: string, path: string): Promise<void>
-    // --- 1. 新增：為新函式添加 TypeScript 型別定義 ---
     getLastFileForMode(mode: string): Promise<string | null>
     setLastFileForMode(mode: string, path: string): Promise<void>
 

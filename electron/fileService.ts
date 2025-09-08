@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import { dialog } from 'electron';
 import isBinaryPath from 'is-binary-path';
 
-// --- 從 main.ts 遷移過來的型別定義 ---
+// --- (其他型別定義與函式保持不變) ---
 interface FileEntry {
   name: string;
   path: string;
@@ -17,11 +17,8 @@ interface ReadFileResult {
   mimeType?: string;
 }
 
-// --- 從 main.ts 遷移過來的常數 ---
 const ALLOWED_EXTENSIONS = ['.md', '.txt', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.pdf'];
 const MAX_RECURSION_DEPTH = 5;
-
-// --- 遷移過來的核心函式 ---
 
 async function readDirectoryRecursively(dirPath: string, currentDepth = 0): Promise<FileEntry[]> {
   if (currentDepth >= MAX_RECURSION_DEPTH) {
@@ -154,6 +151,46 @@ async function createFolder(parentDir: string, folderName: string, rootPath: str
   }
 }
 
+// --- 1. 新增：刪除檔案或資料夾的函式 ---
+/**
+ * 目的：從檔案系統中刪除一個指定的檔案或資料夾。
+ * @param entryPath - 要刪除的項目的完整路徑。
+ * @returns {Promise<boolean>} - 操作是否成功。
+ */
+async function deleteEntry(entryPath: string): Promise<boolean> {
+  try {
+    // 為什麼：使用 fs.rm 搭配 { recursive: true, force: true }
+    //         可以確保無論是檔案還是非空資料夾都能被安全地刪除。
+    await fs.rm(entryPath, { recursive: true, force: true });
+    return true;
+  } catch (error) {
+    console.error(`Error deleting entry: ${entryPath}`, error);
+    return false;
+  }
+}
+
+// --- 2. 新增：重新命名檔案或資料夾的函式 ---
+/**
+ * 目的：將一個檔案或資料夾重新命名。
+ * @param oldPath - 原始的完整路徑。
+ * @param newName - 新的名稱 (不含路徑)。
+ * @returns {Promise<string | null>} - 如果成功，返回新的完整路徑；否則返回 null。
+ */
+async function renameEntry(oldPath: string, newName: string): Promise<string | null> {
+  // 為什麼：先用 path.dirname 取得父目錄，再用 path.join 組合出新的完整路徑，
+  //         這是處理路徑最可靠的方式，可以避免平台差異。
+  const parentDir = path.dirname(oldPath);
+  const newPath = path.join(parentDir, newName);
+
+  try {
+    await fs.rename(oldPath, newPath);
+    return newPath;
+  } catch (error) {
+    console.error(`Error renaming from ${oldPath} to ${newPath}`, error);
+    return null;
+  }
+}
+
 // 目的：將所有檔案操作函式包裝成一個 'fileService' 物件並匯出。
 export const fileService = {
   getFiles,
@@ -161,4 +198,7 @@ export const fileService = {
   saveFile,
   createFile,
   createFolder,
+  // --- 3. 新增點：將新函式加入匯出物件中 ---
+  deleteEntry,
+  renameEntry,
 };

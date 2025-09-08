@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router'
 import path from 'path-browserify'
-// --- 1. 新增點：同時匯入 useMainStore ---
 import { useFileStore, useMainStore } from '../../store'
+import ContextMenu from './ContextMenu.vue';
 
 interface FileEntry {
   name: string;
@@ -16,10 +17,18 @@ const props = defineProps<{
   entries: FileEntry[]
 }>()
 
+const emit = defineEmits(['rename', 'delete']);
+
 const fileStore = useFileStore()
-const router = useRouter()
-// --- 2. 新增點：取得 mainStore 實例 ---
 const mainStore = useMainStore()
+const router = useRouter()
+
+const contextMenuState = ref({
+  show: false,
+  x: 0,
+  y: 0,
+  targetEntry: null as FileEntry | null,
+});
 
 function getIconForFile(fileName: string): string {
   const extension = fileName.split('.').pop()?.toLowerCase();
@@ -33,23 +42,20 @@ function getIconForFile(fileName: string): string {
   }
 }
 
-/**
- * 目的：處理使用者點擊檔案樹中任一項目的行為。
- * @param entry - 使用者點擊的 FileEntry 物件。
- */
 async function handleEntryClick(entry: FileEntry) {
   if (entry.isDirectory) {
+    // --- 1. 核心修正點：點擊資料夾時，清除已選中的檔案狀態 ---
+    // 為什麼：這確保了操作的上下文是明確的。如果使用者接著點擊「新增」，
+    //         程式會知道目標是在這個資料夾下，而不是在之前選中的某個檔案旁邊。
+    fileStore.selectFile(null);
     fileStore.toggleFolderExpansion(entry.path);
     fileStore.selectFolder(entry.path);
   } else {
-    // 3. 修改點：在選中檔案後，呼叫後端儲存此路徑
-    // 為什麼：這是實現「記憶最後開啟檔案」功能的關鍵。我們需要知道是在哪個模式下選中了哪個檔案。
     const mode = mainStore.sidebarMode === 'files' 
       ? mainStore.previousSidebarMode 
       : mainStore.sidebarMode;
       
     if (mode) {
-      // 將這個檔案路徑與當前模式綁定並儲存
       await window.ipcRenderer.setLastFileForMode(mode, entry.path);
     }
 
@@ -63,6 +69,50 @@ async function handleEntryClick(entry: FileEntry) {
     fileStore.selectFolder(path.dirname(entry.path));
   }
 }
+
+function showContextMenu(event: MouseEvent, entry: FileEntry) {
+  contextMenuState.value.show = true;
+  contextMenuState.value.x = event.clientX;
+  contextMenuState.value.y = event.clientY;
+  contextMenuState.value.targetEntry = entry;
+
+  // 註解：右鍵點擊時也需要更新選中狀態，確保視覺上一致
+  if (entry.isDirectory) {
+    fileStore.selectFile(null); // 同樣，右鍵點擊資料夾時清除檔案選中
+    fileStore.selectFolder(entry.path);
+  } else {
+    fileStore.selectFile(entry.path);
+    fileStore.selectFolder(path.dirname(entry.path));
+  }
+}
+
+function closeContextMenu() {
+  contextMenuState.value.show = false;
+  contextMenuState.value.targetEntry = null;
+}
+
+function onRenameRequest() {
+  if (contextMenuState.value.targetEntry) {
+    emit('rename', contextMenuState.value.targetEntry);
+  }
+  closeContextMenu();
+}
+
+function onDeleteRequest() {
+  if (contextMenuState.value.targetEntry) {
+    emit('delete', contextMenuState.value.targetEntry);
+  }
+  closeContextMenu();
+}
+
+onMounted(() => {
+  window.addEventListener('click', closeContextMenu);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('click', closeContextMenu);
+});
+
 </script>
 
 <template>
@@ -76,6 +126,7 @@ async function handleEntryClick(entry: FileEntry) {
           'is-selected-folder': entry.isDirectory && fileStore.selectedFolderPath === entry.path
         }"
         @click="handleEntryClick(entry)"
+        @contextmenu.prevent="showContextMenu($event, entry)"
       >
         <span v-if="entry.isDirectory" class="arrow-icon" :class="{ 'is-expanded': fileStore.expandedFolderPaths.has(entry.path) }">▶</span>
         <span v-else class="arrow-placeholder"></span>
@@ -88,14 +139,27 @@ async function handleEntryClick(entry: FileEntry) {
       </div>
       <div v-if="entry.isDirectory && fileStore.expandedFolderPaths.has(entry.path) && entry.children?.length">
         <div class="children-wrapper">
-          <FileTree :entries="entry.children" />
+          <FileTree 
+            :entries="entry.children"
+            @rename="(entry) => emit('rename', entry)"
+            @delete="(entry) => emit('delete', entry)"
+          />
         </div>
       </div>
     </div>
+    
+    <ContextMenu
+      :show="contextMenuState.show"
+      :x="contextMenuState.x"
+      :y="contextMenuState.y"
+      @rename="onRenameRequest"
+      @delete="onDeleteRequest"
+    />
   </div>
 </template>
 
 <style scoped>
+/* (樣式保持不變) */
 .file-tree-container {
   width: max-content;
   min-width: 100%;

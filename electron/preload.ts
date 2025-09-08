@@ -1,7 +1,6 @@
 // 檔案位置: electron/preload.ts
 import { ipcRenderer, contextBridge } from 'electron'
 
-// 註解：此處定義的物件將會掛載到前端的 window.ipcRenderer 上
 contextBridge.exposeInMainWorld('ipcRenderer', {
   invoke: (...args: Parameters<typeof ipcRenderer.invoke>) => {
     const [channel, ...omit] = args;
@@ -20,13 +19,15 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   saveFile: (filePath: string, content: string): Promise<boolean> => ipcRenderer.invoke('save-file', filePath, content),
   createFile: (parentDir: string, fileName: string, rootPath: string): Promise<any> => ipcRenderer.invoke('create-file', parentDir, fileName, rootPath),
   createFolder: (parentDir: string, folderName: string, rootPath: string): Promise<any> => ipcRenderer.invoke('create-folder', parentDir, folderName, rootPath),
+  // --- 1. 新增點：暴露刪除和重新命名的函式 ---
+  deleteEntry: (entryPath: string): Promise<boolean> => ipcRenderer.invoke('delete-entry', entryPath),
+  renameEntry: (oldPath: string, newName: string): Promise<string | null> => ipcRenderer.invoke('rename-entry', { oldPath, newName }),
 
   // Key-Value
   getMit: (): Promise<string | null> => ipcRenderer.invoke('get-mit'),
   setMit: (content: string): Promise<void> => ipcRenderer.invoke('set-mit', content),
   getLastPathForMode: (mode: string): Promise<string | null> => ipcRenderer.invoke('get-last-path-for-mode', mode),
   setLastPathForMode: (mode: string, path: string): Promise<void> => ipcRenderer.invoke('set-last-path-for-mode', { mode, path }),
-  // --- 1. 新增點：暴露用於處理「最後開啟檔案」的函式 ---
   getLastFileForMode: (mode: string): Promise<string | null> => ipcRenderer.invoke('get-last-file-for-mode', mode),
   setLastFileForMode: (mode: string, path: string): Promise<void> => ipcRenderer.invoke('set-last-file-for-mode', { mode, path }),
 
