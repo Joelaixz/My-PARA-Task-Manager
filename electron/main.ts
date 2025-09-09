@@ -1,5 +1,7 @@
 // 檔案位置: electron/main.ts
 import { app, BrowserWindow, ipcMain, session, shell, clipboard } from 'electron'
+// --- 1. 新增點：從 'electron-updater' 引入 autoUpdater ---
+import { autoUpdater } from 'electron-updater'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -89,6 +91,12 @@ app.whenReady().then(() => {
     .then(() => {
       console.log('Database migration completed successfully.');
       createWindow()
+      
+      // --- 2. 新增點：在視窗建立後，觸發自動更新檢查 ---
+      // 目的：此函式會自動根據 electron-builder.json5 的 publish 設定
+      //       去對應的 GitHub Releases 檢查是否有新版本。
+      //       若有，則會在背景下載，並在完成後提示使用者更新。
+      autoUpdater.checkForUpdatesAndNotify();
     })
     .catch((error) => {
       console.error('Database migration failed:', error);

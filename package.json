@@ -1,7 +1,7 @@
 {
   "name": "my-para-task-manager",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,6 +19,7 @@
     "@codemirror/view": "^6.38.1",
     "@types/turndown": "^5.0.5",
     "better-sqlite3": "^12.2.0",
+    "electron-updater": "6.6.2",
     "knex": "^3.1.0",
     "marked": "^16.1.2",
     "pdfjs-dist": "^4.4.178",

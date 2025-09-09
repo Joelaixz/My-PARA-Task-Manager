@@ -11,6 +11,11 @@
     "dist",
     "dist-electron"
   ],
+  "publish": {
+    "provider": "github",
+    "owner": "Joelaixz",
+    "repo": "My-PARA-Task-Manager"
+  },
   "mac": {
     "target": [
       "dmg"
