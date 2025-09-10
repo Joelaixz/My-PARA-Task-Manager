@@ -23,8 +23,8 @@
   "include": [
     "src/**/*.ts", 
     "src/**/*.tsx", 
-    "src/**/*.vue", 
-    "electron",
+    "src/**/*.vue"
+    // 移除點：刪除此處的 "electron"
   ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

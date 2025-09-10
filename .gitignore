@@ -27,3 +27,6 @@ dist-electron
 # Local database files
 *.db
 *.db-journal
+
+# --- 新增點：忽略 electron-builder 的建置輸出目錄 ---
+release/

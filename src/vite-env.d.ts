@@ -1,7 +1,10 @@
 /// <reference types="vite/client" />
 
-// --- 新增：為 path-browserify 模組提供基礎宣告 ---
-// 目的：解決 TypeScript 找不到 'path-browserify' 模組型別定義的錯誤。
-// 說明：這是一個臨時的解決方案，它會讓 TypeScript 停止報錯，但不會提供詳細的型別資訊。
-//      更完整的方案是執行 `npm i --save-dev @types/path-browserify`。
+// --- 新增點：引用 Electron 的 preload 型別定義 ---
+// 目的：讓 Vue/Vite 這端的前端程式碼，能夠識別由 Electron preload.ts 腳本
+//       附加到全域 window 物件上的 ipcRenderer 屬性及其所有方法。
+// 為什麼：這樣做可以為所有 .vue 和 .ts 檔案提供完整的型別提示與安全檢查，
+//         解決大量的 "Property 'ipcRenderer' does not exist on type 'Window'" 錯誤。
+/// <reference types="../electron/electron-env" />
+
 declare module 'path-browserify';
