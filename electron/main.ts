@@ -1,7 +1,13 @@
 // 檔案位置: electron/main.ts
 import { app, BrowserWindow, ipcMain, session, shell, clipboard } from 'electron'
-// --- 1. 新增點：從 'electron-updater' 引入 autoUpdater ---
-import { autoUpdater } from 'electron-updater'
+// --- 1. 修正點：修改 autoUpdater 的引入方式 ---
+// 舊的寫法: import { autoUpdater } from 'electron-updater'
+// 新的寫法：
+import electronUpdater from 'electron-updater'
+const { autoUpdater } = electronUpdater;
+// 為什麼：如此修改是為了解決 ESM 與 CommonJS 模組間的相容性問題。
+//         'electron-updater' 主要是一個 CommonJS 模組，它並未提供具名的 'autoUpdater' 匯出。
+//         正確的方式是先導入整個模組的預設匯出，然後再從中取得 autoUpdater 物件。
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -92,10 +98,7 @@ app.whenReady().then(() => {
       console.log('Database migration completed successfully.');
       createWindow()
       
-      // --- 2. 新增點：在視窗建立後，觸發自動更新檢查 ---
-      // 目的：此函式會自動根據 electron-builder.json5 的 publish 設定
-      //       去對應的 GitHub Releases 檢查是否有新版本。
-      //       若有，則會在背景下載，並在完成後提示使用者更新。
+      // --- (此處邏輯保持不變) ---
       autoUpdater.checkForUpdatesAndNotify();
     })
     .catch((error) => {
@@ -123,7 +126,6 @@ app.whenReady().then(() => {
   ipcMain.handle('save-file', (event, filePath: string, content: string) => fileService.saveFile(filePath, content))
   ipcMain.handle('create-file', (event, parentDir: string, fileName: string, rootPath: string) => fileService.createFile(parentDir, fileName, rootPath))
   ipcMain.handle('create-folder', (event, parentDir: string, folderName: string, rootPath: string) => fileService.createFolder(parentDir, folderName, rootPath))
-  // --- 1. 新增點：註冊刪除和重新命名的 IPC 通道 ---
   ipcMain.handle('delete-entry', (event, entryPath: string) => fileService.deleteEntry(entryPath));
   ipcMain.handle('rename-entry', (event, { oldPath, newName }: { oldPath: string, newName: string }) => fileService.renameEntry(oldPath, newName));
 
